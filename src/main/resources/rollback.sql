@@ -1,0 +1,1 @@
+DELETE FROM developers_projects WHERE id_developer = 19;
