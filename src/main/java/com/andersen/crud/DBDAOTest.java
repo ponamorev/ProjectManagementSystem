@@ -14,7 +14,7 @@ class DBDAOTest {
         Connection connection = GetConnection.getConnection();
         statement = connection.createStatement();
 
-        DBDAO.addLinkDevProject(statement);
+        DBDAO.addLinkCompanyProject(statement);
 
         /*String mainMenu = "Choose the action with database:\n\t1. Create data\n\t" +
                 "2. Read data\n\t3. Update data\n\t4. Delete data\n\t5. Exit from the app\n\t" +

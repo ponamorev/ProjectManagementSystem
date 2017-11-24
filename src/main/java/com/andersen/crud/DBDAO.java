@@ -1,5 +1,7 @@
 package com.andersen.crud;
 
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -9,6 +11,7 @@ import java.util.Scanner;
 class DBDAO {
     private static String query, name_dev, name_project, name_company, name_customer,
             choice, specialty;
+    private static int returnFromLinkExcep;
     private static Scanner reader = new Scanner(System.in);
 
     private static boolean isNumber(String usingString) {
@@ -25,9 +28,9 @@ class DBDAO {
         do {
             try {
                 while (!check)
-                check = date.length() == 10 && isNumber(date.substring(0, 4)) &&
-                        date.charAt(4) == '-' && isNumber(date.substring(5, 7)) &&
-                        date.charAt(7) == '-' && isNumber(date.substring(8));
+                    check = date.length() == 10 && isNumber(date.substring(0, 4)) &&
+                            date.charAt(4) == '-' && isNumber(date.substring(5, 7)) &&
+                            date.charAt(7) == '-' && isNumber(date.substring(8));
 
                 if (check) {
                     year = Integer.parseInt(date.substring(0, 4));
@@ -47,7 +50,7 @@ class DBDAO {
                     continue;
                 }
 
-                if (!flag) flag = true;
+                flag = true;
             } catch (StringIndexOutOfBoundsException | NumberFormatException e) {
                 System.out.println("Wrong format. Please, enter date again.");
                 flag = false;
@@ -57,6 +60,64 @@ class DBDAO {
         return date;
     }
 
+    private static String checkID(int ID1, int ID2, String name1, String name2, String DB1, String DB2,
+                                  String DBforChange, Statement statement) throws SQLException {
+        ResultSet result;
+
+        if (ID1 != 0) {
+            if (ID2 != 0) return "INSERT INTO " + DBforChange + " VALUES (" + ID1 + ", " + ID2 + ")";
+            else {
+                if (!Objects.equals(DB2, "skills"))
+                    query = "SELECT id FROM " + DB2 + " WHERE name LIKE '" + name2 + "'";
+                else query = "SELECT id FROM " + DB2 + " WHERE specialty LIKE '" + name2 + "'";
+                result = statement.executeQuery(query);
+                while (result.next()) ID2 = result.getInt(1);
+                return "INSERT INTO " + DBforChange + " VALUES (" + ID1 + ", " + ID2 + ")";
+            }
+        } else {
+            if (ID2 != 0) {
+                if (!Objects.equals(DB1, "skills"))
+                    query = "SELECT id FROM " + DB1 + " WHERE name LIKE '" + name1 + "'";
+                else query = "SELECT id FROM " + DB1 + " WHERE specialty LIKE '" + name1 + "'";
+                result = statement.executeQuery(query);
+                while (result.next()) ID1 = result.getInt(1);
+                return "INSERT INTO " + DBforChange + " VALUES (" + ID1 + ", " + ID2 + ")";
+            } else {
+                if (!Objects.equals(DB1, "skills"))
+                    query = "SELECT id FROM " + DB1 + " WHERE name LIKE '" + name1 + "'";
+                else query = "SELECT id FROM " + DB1 + " WHERE specialty LIKE '" + name1 + "'";
+                result = statement.executeQuery(query);
+                while (result.next()) ID1 = result.getInt(1);
+
+                if (!Objects.equals(DB2, "skills"))
+                    query = "SELECT id FROM " + DB2 + " WHERE name LIKE '" + name2 + "'";
+                else query = "SELECT id FROM " + DB2 + " WHERE specialty LIKE '" + name2 + "'";
+                result = statement.executeQuery(query);
+                while (result.next()) ID2 = result.getInt(1);
+
+                return "INSERT INTO " + DBforChange + " VALUES (" + ID1 + ", " + ID2 + ")";
+            }
+        }
+    }
+
+    private static int linkExcep() {
+        System.out.println("Do you want to try again? (Y/N)");
+
+        while (true) {
+            choice = reader.nextLine();
+            switch (choice) {
+                case "y":
+                case "Y":
+                    return 1;
+                case "n":
+                case "N":
+                    return 2;
+                default:
+                    System.out.println("Enter Y or N.");
+                    break;
+            }
+        }
+    }
 
 
 
@@ -73,7 +134,7 @@ class DBDAO {
 
         if (Objects.equals(choice, "Y") || Objects.equals(choice, "y")) {
 
-            System.out.print("Enter salary: ");
+            System.out.print("Enter a salary: ");
             int salary = reader.nextInt();
             reader.nextLine();
             query = "INSERT INTO developers VALUES (NULL, '" + name_dev + "', " + salary + ")";
@@ -87,7 +148,7 @@ class DBDAO {
 
 
     static void addingSkill(Statement statement) throws SQLException {
-        System.out.print("Enter the name of specialty: ");
+        System.out.print("Enter the name of the specialty: ");
         specialty = reader.nextLine();
 
         query = "INSERT INTO skills VALUES (NULL, '" + specialty + "')";
@@ -143,7 +204,7 @@ class DBDAO {
 
 
     static void addingCompany(Statement statement) throws SQLException {
-        System.out.print("Enter the name of a company: ");
+        System.out.print("Enter the name of the company: ");
         name_company = reader.nextLine();
 
         // entering address
@@ -156,14 +217,12 @@ class DBDAO {
 
 
     static void addingCustomer(Statement statement) throws SQLException {
-        System.out.print("Enter the name of a customer: ");
+        System.out.print("Enter the name of the customer: ");
         name_customer = reader.nextLine();
 
         query = "INSERT INTO customers VALUES (NULL, '" + name_customer + "')";
         System.out.println(statement.executeUpdate(query) + " row(-s) changed");
     }
-
-
 
 
     /**
@@ -172,54 +231,29 @@ class DBDAO {
      */
     static void addLinkDevSkill(Statement statement)
             throws SQLException, NumberFormatException {
-        ResultSet result;
+        boolean flag = false;
 
-        System.out.print("Enter the name or ID of the developer: ");
-        name_dev = reader.nextLine();
-        int ID = 0, ID_skill = 0;
-        if (isNumber(name_dev))
-            ID = Integer.parseInt(name_dev);
+        while (!flag) {
+            try {
+                System.out.print("Enter name or ID of the developer: ");
+                name_dev = reader.nextLine();
+                int ID = 0, ID_skill = 0;
+                if (isNumber(name_dev))
+                    ID = Integer.parseInt(name_dev);
 
-        System.out.print("Enter the name or ID of the specialty which will be added to developer: ");
-        specialty = reader.nextLine();
-        if (isNumber(specialty))
-            ID_skill = Integer.parseInt(specialty);
+                System.out.print("Enter name or ID of the specialty which will be added to developer: ");
+                specialty = reader.nextLine();
+                if (isNumber(specialty))
+                    ID_skill = Integer.parseInt(specialty);
 
-        if (ID != 0) {
-            if (ID_skill != 0) {
-                query = "INSERT INTO developers_skills VALUES (" + ID + ", " + ID_skill + ")";
+                query = checkID(ID, ID_skill, name_dev, specialty, "developers",
+                        "skills", "developers_skills", statement);
                 System.out.println(statement.executeUpdate(query) + " row(-s) changed");
-            } else {
-                query = "SELECT id FROM skills WHERE specialty LIKE '" + specialty + "'";
-                result = statement.executeQuery(query);
-                while (result.next())
-                    ID_skill = result.getInt("id");
-
-                query = "INSERT INTO developers_skills VALUES (" + ID + ", " + ID_skill + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
-            }
-        } else {
-            if (ID_skill != 0) {
-                query = "SELECT id FROM developers WHERE name LIKE '" + name_dev + "'";
-                result = statement.executeQuery(query);
-                while (result.next())
-                    ID = result.getInt(1);
-
-                query = "INSERT INTO developers_skills VALUES (" + ID + ", " + ID_skill + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
-            } else {
-                query = "SELECT id FROM developers WHERE name LIKE '" + name_dev + "'";
-                result = statement.executeQuery(query);
-                while (result.next())
-                    ID = result.getInt(1);
-
-                query = "SELECT id FROM skills WHERE specialty LIKE '" + specialty + "'";
-                result = statement.executeQuery(query);
-                while (result.next())
-                    ID_skill = result.getInt(1);
-
-                query = "INSERT INTO developers_skills VALUES (" + ID + ", " + ID_skill + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
+                flag = true;
+            } catch (MySQLIntegrityConstraintViolationException e) {
+                System.out.println("\nYou wrote nonexistent ID(-s) or name(-s).");
+                returnFromLinkExcep = linkExcep();
+                if (returnFromLinkExcep == 2) return;
             }
         }
     }
@@ -227,59 +261,53 @@ class DBDAO {
 
     static void addLinkDevProject(Statement statement)
             throws SQLException, NumberFormatException {
+        boolean flag = false;
         ResultSet result;
 
-        System.out.print("Enter the name or ID of developer: ");
-        name_dev = reader.nextLine();
-        int ID_dev = 0, ID_project = 0;
-        if (isNumber(name_dev))
-            ID_dev = Integer.parseInt(name_dev);
+        while (!flag) {
+            try {
+                System.out.print("Enter name or ID of developer: ");
+                name_dev = reader.nextLine();
+                int ID_dev = 0, ID_project = 0;
+                if (isNumber(name_dev))
+                    ID_dev = Integer.parseInt(name_dev);
 
-        System.out.print("Enter the name or ID of the project where the developer is working: ");
-        name_project = reader.nextLine();
-        if (isNumber(name_project))
-            ID_project = Integer.parseInt(name_project);
+                System.out.print("Enter name or ID of the project where the developer is working: ");
+                name_project = reader.nextLine();
+                if (isNumber(name_project))
+                    ID_project = Integer.parseInt(name_project);
 
-
-        if (ID_dev != 0) {
-            if (ID_project != 0) {
-                query = "INSERT INTO developers_projects VALUES ("
-                        + ID_dev + ", " + ID_project + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
-            } else {
-                query = "SELECT id FROM projects WHERE name LIKE '" + name_project + "'";
+                query = "SELECT id_developer FROM developers_skills WHERE id_developer = " + ID_dev + " AND " +
+                        "id_skill IN (SELECT id_skill FROM projects_skills WHERE id_project = " + ID_project + ")";
                 result = statement.executeQuery(query);
-                while (result.next())
-                    ID_project = result.getInt(1);
+                if (!result.next())
+                    throw new SQLException("Has not skill.");
 
-                query = "INSERT INTO developers_projects VALUES ("
-                        + ID_dev + ", " + ID_project + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
-            }
-        } else {
-            if (ID_project != 0) {
-                query = "SELECT id FROM developers WHERE name LIKE '" + name_dev + "'";
+                query = "SELECT id_developer FROM developers_companies WHERE id_developer = " + ID_dev + " AND " +
+                        "id_company IN (SELECT id_company FROM companies_projects WHERE id_project = " + ID_project + ")";
                 result = statement.executeQuery(query);
-                while (result.next())
-                    ID_dev = result.getInt(1);
+                if (!result.next())
+                    throw new SQLException("There is not that company.");
 
-                query = "INSERT INTO developers_projects VALUES ("
-                        + ID_dev + ", " + ID_project + ")";
+                query = checkID(ID_dev, ID_project, name_dev, name_project, "developers",
+                        "projects", "developers_projects", statement);
                 System.out.println(statement.executeUpdate(query) + " row(-s) changed");
-            } else {
-                query = "SELECT id FROM developers WHERE name LIKE '" + name_dev + "'";
-                result = statement.executeQuery(query);
-                while (result.next())
-                    ID_dev = result.getInt(1);
-
-                query = "SELECT id FROM projects WHERE name LIKE '" + name_project + "'";
-                result = statement.executeQuery(query);
-                while (result.next())
-                    ID_project = result.getInt(1);
-
-                query = "INSERT INTO developers_projects VALUES ("
-                        + ID_dev + ", " + ID_project + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
+                flag = true;
+            } catch (MySQLIntegrityConstraintViolationException e) {
+                System.out.println("\nYou wrote nonexistent ID(-s) or name(-s).");
+                returnFromLinkExcep = linkExcep();
+                if (returnFromLinkExcep == 2) return;
+            } catch (SQLException e) {
+                if (Objects.equals(e.getMessage(), "Has not skill.")) {
+                    System.out.println("Chosen developer hasn't a necessary skills for working with chosen project.");
+                    returnFromLinkExcep = linkExcep();
+                    if (returnFromLinkExcep == 2) return;
+                }
+                if (Objects.equals(e.getMessage(), "There is not that company.")) {
+                    System.out.println("Chosen developer doesn't work in the company which works with this project.");
+                    returnFromLinkExcep = linkExcep();
+                    if (returnFromLinkExcep == 2) return;
+                }
             }
         }
     }
@@ -287,19 +315,74 @@ class DBDAO {
 
     static void addLinkDevCompany(Statement statement)
             throws SQLException, NumberFormatException {
+        boolean flag = false;
+
+        while (!flag) {
+            try {
+                System.out.print("Enter name or ID of developer: ");
+                name_dev = reader.nextLine();
+                int ID_dev = 0, ID_company = 0;
+                if (isNumber(name_dev))
+                    ID_dev = Integer.parseInt(name_dev);
+
+                System.out.print("Enter name or ID of the company in which the developer is working: ");
+                name_company = reader.nextLine();
+                if (isNumber(name_company))
+                    ID_company = Integer.parseInt(name_company);
+
+                query = checkID(ID_dev, ID_company, name_dev, name_company, "developers",
+                        "companies", "developers_companies", statement);
+                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
+                flag = true;
+            } catch (MySQLIntegrityConstraintViolationException e) {
+                System.out.println("\nYou wrote nonexistent ID(-s) or name(-s).");
+                returnFromLinkExcep = linkExcep();
+                if (returnFromLinkExcep == 2) return;
+            }
+        }
+    }
+
+
+    static void addLinkCompanyProject(Statement statement)
+            throws SQLException, NumberFormatException {
+        boolean flag = false;
         ResultSet result;
 
-        System.out.print("Enter the name or ID of developer: ");
-        name_dev = reader.nextLine();
-        int ID_dev = 0, ID_company = 0;
-        if (isNumber(name_dev))
-            ID_dev = Integer.parseInt(name_dev);
+        while (!flag) {
+            try {
+                System.out.print("Enter name or ID of the company: ");
+                name_company = reader.nextLine();
+                int ID_company = 0, ID_project = 0;
+                if (isNumber(name_company))
+                    ID_company = Integer.parseInt(name_company);
 
-        System.out.print("Enter the name or ID of the company in which the developer is working: ");
-        name_company = reader.nextLine();
-        if (isNumber(name_company))
-            ID_company= Integer.parseInt(name_company);
+                System.out.print("Enter name or ID of the project with which the company will work: ");
+                name_project = reader.nextLine();
+                if (isNumber(name_project))
+                    ID_project = Integer.parseInt(name_project);
 
+                query = "SELECT id_company FROM companies_customers WHERE id_company = " + ID_company + " AND " +
+                        "id_customer IN (SELECT id_customer FROM customers_projects WHERE id_project = " + ID_project + ")";
+                result = statement.executeQuery(query);
+                if (!result.next())
+                    throw new SQLException("Has not customer.");
 
+                query = checkID(ID_company, ID_project, name_company, name_project, "companies",
+                        "projects", "companies_projects", statement);
+                System.out.println(statement.executeUpdate(query) + " row(-s) changed");
+                flag = true;
+            } catch (MySQLIntegrityConstraintViolationException e) {
+                System.out.println("\nYou wrote nonexistent ID(-s) or name(-s).");
+                System.out.println("Do you want to try again? (Y/N)");
+                returnFromLinkExcep = linkExcep();
+                if (returnFromLinkExcep == 2) return;
+            } catch (SQLException e) {
+                if (Objects.equals(e.getMessage(), "Has not customer.")) {
+                    System.out.println("Chosen company doesn't work with the customer which ordered the chosen project.");
+                    returnFromLinkExcep = linkExcep();
+                    if (returnFromLinkExcep == 2) return;
+                }
+            }
+        }
     }
 }
