@@ -1,1 +1,1 @@
-DELETE FROM developers_companies WHERE id_developer = 20 AND id_company = 2;
+DELETE FROM developers WHERE id = 20;

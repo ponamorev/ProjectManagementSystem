@@ -15,7 +15,9 @@ class DBDAOTest {
         Connection connection = GetConnection.getConnection();
         statement = connection.createStatement();
 
-        DBDAO.addLinkRecords("companies", "projects", statement);
+        Scanner reader = new Scanner(System.in);
+
+        DBDAO.readTables(connection, statement);
 
         /*String query = DBDAO.findRecords("projects", statement);
         DBDAO.checkQueryAndOut("projects", query, statement);*/
