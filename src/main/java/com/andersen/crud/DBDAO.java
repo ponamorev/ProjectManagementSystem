@@ -2,16 +2,13 @@ package com.andersen.crud;
 
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Objects;
 import java.util.Scanner;
 
 class DBDAO {
     private static String query, choise;
-    static int returnFromLinkExcep;
+    private static int returnFromLinkExcep;
     private static Scanner reader = new Scanner(System.in);
 
     private static boolean isNumber(String usingString) {
@@ -145,7 +142,7 @@ class DBDAO {
         }
     }
 
-    static int linkExcep() {
+    private static int linkExcep() {
         System.out.println("Do you want to try again? (Y/N)");
 
         while (true) {
@@ -196,7 +193,7 @@ class DBDAO {
         return count > 0;
     }
 
-    static void checkQueryAndOut(String testQuery, String[] columns, Connection connection)
+    private static void checkQueryAndOut(String testQuery, String[] columns, Connection connection)
             throws SQLException {
         ResultSet result;
         String fieldName[], fieldResult[][], addString;
@@ -310,6 +307,124 @@ class DBDAO {
         } else System.out.println("The query is empty!");
     }
 
+    private static String[] selectTables(Statement statement)
+            throws SQLException, ClassNotFoundException {
+        ResultSet result;
+        StringBuilder builder = new StringBuilder();
+        String table, allTables[], chosenTablesArr[], chosenTables;
+        int count;
+        // Select tables
+
+        // Output all tables
+        System.out.println("Select table(-s) to search.\nList of tables is shown below.");
+        query = "SELECT DISTINCT table_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'task_sql'";
+        checkQueryAndOut(query, new String[]{"table_name"}, GetConnection.getConnection());
+        result = statement.executeQuery(query);
+        while (result.next()) {
+            table = result.getString(1);
+            builder.append(table).append("\n");
+        }
+        allTables = builder.toString().split("\n");
+        builder.delete(0, builder.length());
+
+        // Enter needed tables
+        System.out.println("Enter the table(-s). For stop enter 'q'.");
+        table = reader.nextLine();
+        while (!Objects.equals(table, "q")) {
+            count = 0;
+            for (String tab : allTables)
+                if (Objects.equals(table, tab))
+                    count++;
+            if (count > 0)
+                builder.append(table).append("\n");
+            else
+                throw new SQLException("Table");
+            table = reader.nextLine();
+        }
+
+        chosenTablesArr = builder.toString().split("\n");
+        builder.delete(0, builder.length());
+        chosenTables = "";
+        for (int i = 0; i < chosenTablesArr.length; i++) {
+            chosenTables += chosenTablesArr[i];
+            if (i + 1 < chosenTablesArr.length)
+                chosenTables += ", ";
+        }
+        String cloneArr[] = new String[chosenTablesArr.length];
+        System.arraycopy(chosenTablesArr, 0, cloneArr, 0, chosenTablesArr.length);
+        chosenTablesArr = new String[chosenTablesArr.length + 1];
+        chosenTablesArr[0] = chosenTables;
+        System.arraycopy(cloneArr, 0, chosenTablesArr, 1, cloneArr.length);
+
+        return chosenTablesArr;
+    }
+
+    private static String[] selectColumns(String[] tables, Statement statement)
+            throws SQLException, ClassNotFoundException {
+        ResultSet result;
+        StringBuilder builder = new StringBuilder();
+        String column, allColumns[], chosenColumnsArr[], chosenColumns;
+        int count;
+
+        // Output all columns from chosen tables
+        System.out.println("Select columns to output.\nList of columns is shown below.");
+        query = "SELECT DISTINCT table_name, column_name FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE table_schema = 'task_sql'";
+        query = query.concat(" AND ");
+        for (int i = 1; i < tables.length; i++) {
+            query = query.concat("table_name = '" + tables[i] + "'");
+            if (i + 1 < tables.length)
+                query = query.concat(" OR ");
+        }
+        checkQueryAndOut(query, new String[]{"table_name", "column_name"}, GetConnection.getConnection());
+        result = statement.executeQuery(query);
+        while (result.next()) {
+            column = result.getString(1) + "." + result.getString(2);
+            builder.append(column).append("\n");
+        }
+        allColumns = builder.toString().split("\n");
+        builder.delete(0, builder.length());
+
+        // Enter needed columns
+        System.out.println("\nEnter columns. For stop enter 'q'. For add all columns enter 'all'.");
+        column = reader.nextLine();
+
+        while (!Objects.equals(column, "q")) {
+            if (!Objects.equals(column, "all")) {
+                count = 0;
+                for (String col : allColumns)
+                    if (Objects.equals(column, col))
+                        count++;
+                if (count > 0)
+                    builder.append(column).append("\n");
+                else throw new SQLException("Column");
+                column = reader.nextLine();
+            } else {
+                builder.delete(0, builder.length());
+                for (String col : allColumns)
+                    builder.append(col).append("\n");
+                column = "q";
+            }
+        }
+
+        chosenColumnsArr = builder.toString().split("\n");
+        builder.delete(0, builder.length());
+        chosenColumns = "";
+        for (int i = 0; i < chosenColumnsArr.length; i++) {
+            chosenColumns += chosenColumnsArr[i];
+            if (i + 1 < chosenColumnsArr.length)
+                chosenColumns += ", ";
+        }
+
+        String cloneArr[] = new String[chosenColumnsArr.length];
+        System.arraycopy(chosenColumnsArr, 0, cloneArr, 0, chosenColumnsArr.length);
+        chosenColumnsArr = new String[chosenColumnsArr.length + 1];
+        chosenColumnsArr[0] = chosenColumns;
+        System.arraycopy(cloneArr, 0, chosenColumnsArr, 1, cloneArr.length);
+
+        return chosenColumnsArr;
+    }
+
 
     /**
      * @param table
@@ -354,14 +469,14 @@ class DBDAO {
                             builder.append(name).append("')");
                         // Adding in the table "developers"
                         System.out.println(statement.executeUpdate(builder.toString()) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
                         builder.delete(0, builder.length());
 
 
                         System.out.println("Please, add one or more skills for the developer.\n" +
                                 "List of skills is shown below.");
                         query = "SELECT * FROM skills";
-                        String columnsSkill[] = { "id", "specialty" };
+                        String columnsSkill[] = {"id", "specialty"};
                         checkQueryAndOut(query, columnsSkill, connection);
                         builder.append("INSERT INTO developers_skills VALUES (");
                         query = "SELECT id FROM developers WHERE name = '" + name + "'";
@@ -379,10 +494,10 @@ class DBDAO {
                                     skill = result.getString(1);
                             }
                             builder.append(ID_dev).append(", ").append(skill).append(")");
-                            System.out.print("Do you want to add another skill? (Y/N)\t");
+                            System.out.println("Do you want to add another skill? (Y/N)");
                             choise = reader.nextLine();
-                            more = Objects.equals(choise, "y") || Objects.equals(choise, "Y");
-                            if (more) builder.append(", (");
+                            more = !(Objects.equals(choise, "y") || Objects.equals(choise, "Y"));
+                            if (!more) builder.append(", (");
                         }
                         // Adding in the table "developers_skills"
                         createDev[0] = builder.toString();
@@ -392,7 +507,7 @@ class DBDAO {
                         System.out.println("Please, add one or more companies where the developer is working.\n" +
                                 "List of the companies is shown below.");
                         query = "SELECT * FROM companies";
-                        String columnsCompany[] = { "id", "name", "address" };
+                        String columnsCompany[] = {"id", "name", "address"};
                         checkQueryAndOut(query, columnsCompany, connection);
                         builder.append("INSERT INTO developers_companies VALUES (");
                         more = false;
@@ -406,17 +521,17 @@ class DBDAO {
                                     company = result.getString(1);
                             }
                             builder.append(ID_dev).append(", ").append(company).append(")");
-                            System.out.print("Do you want to add another company? (Y/N)\t");
+                            System.out.println("Do you want to add another company? (Y/N)");
                             choise = reader.nextLine();
-                            more = Objects.equals(choise, "y") || Objects.equals(choise, "Y");
-                            if (more) builder.append(", (");
+                            more = !(Objects.equals(choise, "y") || Objects.equals(choise, "Y"));
+                            if (!more) builder.append(", (");
                         }
-                        // Addind in the table "developers_companies"
+                        // Adding in the table "developers_companies"
                         createDev[1] = builder.toString();
                         builder.delete(0, builder.length());
 
                         System.out.println(statement.executeUpdate(createDev[0]) +
-                                statement.executeUpdate(createDev[1]) + " row(-s) changed.");
+                                statement.executeUpdate(createDev[1]) + " row(-s) changed.\n");
                         break;
 
                     // Add in the table "projects"!
@@ -426,7 +541,7 @@ class DBDAO {
                         choise = reader.nextLine();
 
                         if (Objects.equals(choise, "Y") || Objects.equals(choise, "y")) {
-                            System.out.println("Write the description below:");
+                            System.out.println("Write the description below..");
                             description = reader.nextLine();
                             description = "'" + description + "'";
                         }
@@ -453,14 +568,14 @@ class DBDAO {
                         builder.append("', ").append(cost).append(")");
                         // Adding in the table "projects"
                         System.out.println(statement.executeUpdate(builder.toString()) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
                         builder.delete(0, builder.length());
 
 
                         System.out.println("Please, add one or more skills which are necessary" +
                                 " for working with the project.\nList of skills is shown below.");
                         query = "SELECT * FROM skills";
-                        columnsSkill = new String[] { "id", "specialty" };
+                        columnsSkill = new String[]{"id", "specialty"};
                         checkQueryAndOut(query, columnsSkill, connection);
                         builder.append("INSERT INTO projects_skills VALUES (");
                         query = "SELECT id FROM projects WHERE name = '" + name + "'";
@@ -481,8 +596,8 @@ class DBDAO {
                             builder.append(ID_project).append(", ").append(skill).append(")");
                             System.out.print("Do you want to add another skill? (Y/N)\t");
                             choise = reader.nextLine();
-                            more = Objects.equals(choise, "y") || Objects.equals(choise, "Y");
-                            if (more) builder.append(", (");
+                            more = !(Objects.equals(choise, "y") || Objects.equals(choise, "Y"));
+                            if (!more) builder.append(", (");
                         }
                         // Adding in the table "developers_skills"
                         createProject[0] = builder.toString();
@@ -492,7 +607,7 @@ class DBDAO {
                         System.out.println("Please, add one or more companies which work with the project.\n" +
                                 "List of the companies is shown below.");
                         query = "SELECT * FROM companies";
-                        columnsCompany = new String[] { "id", "name", "address" };
+                        columnsCompany = new String[]{"id", "name", "address"};
 
                         checkQueryAndOut(query, columnsCompany, connection);
                         builder.append("INSERT INTO companies_projects VALUES (");
@@ -507,12 +622,12 @@ class DBDAO {
                                     company = result.getString(1);
                             }
                             builder.append(ID_project).append(", ").append(company).append(")");
-                            System.out.print("Do you want to add another company? (Y/N)\t");
+                            System.out.println("Do you want to add another company? (Y/N)");
                             choise = reader.nextLine();
-                            more = Objects.equals(choise, "y") || Objects.equals(choise, "Y");
-                            if (more) builder.append(", (");
+                            more = !(Objects.equals(choise, "y") || Objects.equals(choise, "Y"));
+                            if (!more) builder.append(", (");
                         }
-                        // Addind in the table "developers_companies"
+                        // Adding in the table "developers_companies"
                         createProject[1] = builder.toString();
                         builder.delete(0, builder.length());
 
@@ -520,7 +635,7 @@ class DBDAO {
                         System.out.println("Please, add one or more customers which ordered this project.\n" +
                                 "List of the customer is shown below.");
                         query = "SELECT * FROM customers";
-                        String columnsCustomer[] = { "id", "name" };
+                        String columnsCustomer[] = {"id", "name"};
                         checkQueryAndOut(query, columnsCustomer, connection);
                         builder.append("INSERT INTO customers_projects VALUES (");
                         more = false;
@@ -534,10 +649,10 @@ class DBDAO {
                                     customer = result.getString(1);
                             }
                             builder.append(ID_project).append(", ").append(customer).append(")");
-                            System.out.print("Do you want to add another customer? (Y/N)\t");
+                            System.out.println("Do you want to add another customer? (Y/N)");
                             choise = reader.nextLine();
-                            more = Objects.equals(choise, "y") || Objects.equals(choise, "Y");
-                            if (more) builder.append(", (");
+                            more = !(Objects.equals(choise, "y") || Objects.equals(choise, "Y"));
+                            if (!more) builder.append(", (");
                         }
                         // Addind in the table "developers_companies"
                         createProject[2] = builder.toString();
@@ -545,7 +660,7 @@ class DBDAO {
 
                         System.out.println(statement.executeUpdate(createProject[0]) +
                                 statement.executeUpdate(createProject[1]) + statement.executeUpdate(createProject[2]) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
                         break;
 
 
@@ -554,7 +669,7 @@ class DBDAO {
                         String createCustomer[] = new String[1];
                         builder.append(name).append(")");
                         System.out.println(statement.executeUpdate(builder.toString()) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
 
 
                         System.out.println("Please, add one or more companies which are working" +
@@ -579,14 +694,14 @@ class DBDAO {
                                     company = result.getString(1);
                             }
                             builder.append(ID_customer).append(", ").append(company).append(")");
-                            System.out.print("Do you want to add another company? (Y/N)\t");
+                            System.out.println("Do you want to add another company? (Y/N)");
                             choise = reader.nextLine();
-                            more = Objects.equals(choise, "y") || Objects.equals(choise, "Y");
-                            if (more) builder.append(", (");
+                            more = !(Objects.equals(choise, "y") || Objects.equals(choise, "Y"));
+                            if (!more) builder.append(", (");
                         }
                         // Addind in the table "companies_customers"
                         System.out.println(statement.executeUpdate(builder.toString()) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
 
                         break;
 
@@ -597,7 +712,7 @@ class DBDAO {
 
                         builder.append(name).append("', '").append(address).append("')");
                         System.out.println(statement.executeUpdate(builder.toString()) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
                         break;
 
 
@@ -605,13 +720,13 @@ class DBDAO {
                     default:
                         builder.append(name).append("')");
                         System.out.println(statement.executeUpdate(builder.toString()) +
-                                " row(-s) changed.");
+                                " row(-s) changed.\n");
                         break;
                 }
 
                 flag = true;
             } else {
-                System.out.println("This record is already contained in the table.");
+                System.out.println("\nThis record is already contained in the table.");
                 returnFromLinkExcep = linkExcep();
                 if (returnFromLinkExcep == 2) return;
             }
@@ -738,108 +853,115 @@ class DBDAO {
     /**
      * @param connection
      * @param statement
-     * @return
      * @throws SQLException This method lets to search records in any table
      */
 
     static void readTables(Connection connection, Statement statement)
             throws SQLException {
-        ResultSet result;
-        String table, allTables[], chosenTablesArr[], chosenTables, column, allColumns[], chosenColumnsArr[],
-                chosenColumns, condition, allConditionsArr[], chosenConditions;
+        String chosenTablesArr[], chosenColumnsArr[], chosenColumns, condition, allConditionsArr[];
         boolean flag = false;
-        int count = 0;
+
+        while (!flag) try {
+            StringBuilder builder = new StringBuilder();
+
+            // Select tables
+            chosenTablesArr = selectTables(statement);
+
+            // Select columns
+            chosenColumnsArr = selectColumns(chosenTablesArr, statement);
+            chosenColumns = chosenColumnsArr[0];
+            String cloneArr[] = new String[chosenColumnsArr.length - 1];
+            System.arraycopy(chosenColumnsArr, 1, cloneArr, 0, cloneArr.length);
+
+            // Select to conditions to search
+            System.out.println("Enter consistently the conditions to search" +
+                    "(separated by a line separator).\nThe conditions must be written in" +
+                    " the following format: 'field =/LIKE/>/</>=/<=/<>/IN some_value' " +
+                    "\nor 'field BETWEEN min_value AND max_value')." +
+                    "\nFor combine conditions must use 'AND' or 'OR'." +
+                    "\nIf you want to use subquery, you need to remember the SQL-syntax." +
+                    "\nIf you compare string field, value for comparing must be enclosed " +
+                    "in quotation marks.\nFor stop enter 'q'.");
+
+            condition = reader.nextLine();
+            while (!Objects.equals(condition, "q")) {
+                builder.append(condition).append("\n");
+                condition = reader.nextLine();
+            }
+            if (!Objects.equals(builder.toString(), "")) {
+                allConditionsArr = builder.toString().split("\n");
+                builder.delete(0, builder.length());
+                condition = "";
+                for (int i = 0; i < allConditionsArr.length; i++) {
+                    condition += allConditionsArr[i];
+                    if (i + 1 < allConditionsArr.length)
+                        if (!Objects.equals(allConditionsArr[i].charAt(allConditionsArr[i].length() - 1), ' ') &
+                                !Objects.equals(allConditionsArr[i + 1].charAt(0), ' '))
+                            condition += " ";
+                }
+            } else condition = "";
+
+
+            // Query!
+            if (!Objects.equals(condition, ""))
+                query = "SELECT " + chosenColumns + " FROM " + chosenTablesArr[0] + " WHERE " + condition;
+            else query = "SELECT " + chosenColumns + " FROM " + chosenTablesArr[0];
+
+
+            checkQueryAndOut(query, cloneArr, connection);
+            flag = true;
+            } catch(SQLException e){
+                if (Objects.equals(e.getMessage(), "Column")) {
+                    System.out.println("\nYou wrote nonexistent column.");
+                } else if (Objects.equals(e.getMessage(), "Table")) {
+                    System.out.println("\nYou wrote nonexistent table.");
+                } else System.out.println("\nSyntax error was made. Maybe, " +
+                        "you wrote some column or condition wrong.");
+                returnFromLinkExcep = linkExcep();
+                if (returnFromLinkExcep == 2) return;
+            } catch(ClassNotFoundException e){
+                System.out.println("There was an error with driver which connected to database.");
+            }
+        }
+
+
+    /**
+     * This method updates values in the tables
+     * @param connection
+     * @param statement
+     * @throws SQLException
+     */
+    static void updateRecords(Connection connection, Statement statement)
+            throws SQLException {
+        String condition, allConditions[], listTables = "", value, allValues[],
+                tables[];
+        boolean flag = false;
+
 
         while (!flag) {
             try {
                 StringBuilder builder = new StringBuilder();
-                // Select tables
 
-                // Output all tables
-                System.out.println("Select table(-s) to search.\nList of tables is shown below.");
-                query = "SELECT DISTINCT table_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'task_sql'";
-                result = statement.executeQuery(query);
-                while (result.next()) {
-                    table = result.getString(1);
-                    builder.append(table).append("\n");
-                    System.out.println(table);
-                }
-                allTables = builder.toString().split("\n");
-                builder.delete(0, builder.length());
+                // Select table
+                tables = selectTables(statement);
 
-                // Enter needed tables
-                System.out.println("Enter the table(-s). For stop enter 'q'.");
-                table = reader.nextLine();
-                while (!Objects.equals(table, "q")) {
-                    count = 0;
-                    for (String tab : allTables)
-                         if (Objects.equals(table, tab))
-                             count++;
-                    if (count > 0)
-                        builder.append(table).append("\n");
-                    else
-                        throw new SQLException("Table");
-                    table = reader.nextLine();
-                }
+                if (tables.length > 1) {
+                    query = "SELECT DISTINCT table_name, column_name FROM INFORMATION_SCHEMA.COLUMNS " +
+                            "WHERE table_schema = 'task_sql' AND ";
+                    for (int i = 0; i < tables.length; i++) {
+                        query += "table_name = '" + tables[i] + "'";
+                        if (i + 1 < tables.length)
+                            query += " OR ";
+                    }
+                    checkQueryAndOut(query, new String[]{"table_name", "column_name"}, connection);
+                } else if (tables.length == 1) {
+                    query = "SELECT DISTINCT column_name FROM INFORMATION_SCHEMA.COLUMNS " +
+                            "WHERE table_schema = 'task_sql' AND table_name = '" + tables[0] + "'";
+                    checkQueryAndOut(query, new String[]{"column_name"}, connection);
+                } else throw new SQLException("Table");
 
-                chosenTablesArr = builder.toString().split("\n");
-                builder.delete(0, builder.length());
-                chosenTables = "";
-                for (int i = 0; i < chosenTablesArr.length; i++) {
-                    chosenTables += chosenTablesArr[i];
-                    if (i + 1 < chosenTablesArr.length)
-                        chosenTables += ", ";
-                }
-
-
-
-                // Output all columns from chosen tables
-                System.out.println("Select columns to output.\nList of columns is shown below.");
-                query = "SELECT DISTINCT table_name, column_name FROM INFORMATION_SCHEMA.COLUMNS " +
-                        "WHERE table_schema = 'task_sql'";
-                query = query.concat(" AND ");
-                for (int i = 0; i < chosenTablesArr.length; i++) {
-                    query = query.concat("table_name = '" + chosenTablesArr[i] + "'");
-                    if (i + 1 < chosenTablesArr.length)
-                        query = query.concat(" OR ");
-                }
-                result = statement.executeQuery(query);
-                while (result.next()) {
-                    column = result.getString(1) + "." + result.getString(2);
-                    builder.append(column).append("\n");
-                    System.out.println(column);
-                }
-                allColumns = builder.toString().split("\n");
-                builder.delete(0, builder.length());
-
-                // Enter needed columns
-                System.out.println("\nEnter columns. For stop enter 'q'.");
-                column = reader.nextLine();
-
-                while (!Objects.equals(column, "q")) {
-                    count = 0;
-                    for (String col : allColumns)
-                        if (Objects.equals(column, col))
-                            count++;
-                    if (count > 0)
-                        builder.append(column).append("\n");
-                    else throw new SQLException("Column");
-                    column = reader.nextLine();
-                }
-
-                chosenColumnsArr = builder.toString().split("\n");
-                builder.delete(0, builder.length());
-                chosenColumns = "";
-                for (int i = 0; i < chosenColumnsArr.length; i++) {
-                    chosenColumns += chosenColumnsArr[i];
-                    if (i + 1 < chosenColumnsArr.length)
-                        chosenColumns += ", ";
-                }
-
-
-
-                // Select to conditions to search
-                System.out.println("Enter consistently the conditions to search" +
+                // Enter the condition to search records to update
+                System.out.println("Enter consistently the conditions to search records" +
                         "(separated by a line separator).\nThe conditions must be written in" +
                         " the following format: 'field =/LIKE/>/</>=/<=/<>/IN some_value' " +
                         "\nor 'field BETWEEN min_value AND max_value')." +
@@ -847,29 +969,45 @@ class DBDAO {
                         "\nIf you want to use subquery, you need to remember the SQL-syntax." +
                         "\nIf you compare string field, value for comparing must be enclosed " +
                         "in quotation marks.\nFor stop enter 'q'.");
-
                 condition = reader.nextLine();
                 while (!Objects.equals(condition, "q")) {
                     builder.append(condition).append("\n");
                     condition = reader.nextLine();
                 }
-                allConditionsArr = builder.toString().split("\n");
-                builder.delete(0, builder.length());
-                chosenConditions = "";
-                for (int i = 0; i < allConditionsArr.length; i++) {
-                    chosenConditions += allConditionsArr[i];
-                    if (i + 1 < allConditionsArr.length)
-                        if (!Objects.equals(allConditionsArr[i].charAt(allConditionsArr[i].length() - 1), ' ') &
-                                !Objects.equals(allConditionsArr[i + 1].charAt(0), ' '))
-                            chosenConditions += " ";
+                allConditions = builder.toString().split("\n");
+                condition = "";
+                for (int i = 0; i < allConditions.length; i++) {
+                    condition += allConditions[i];
+                    if (i + 1 < allConditions.length)
+                        if (!Objects.equals(allConditions[i].charAt(allConditions[i].length() - 1), ' ') &
+                                !Objects.equals(allConditions[i + 1].charAt(0), ' '))
+                            condition += " ";
                 }
 
 
+                // translation of an array of tables into a string
+                listTables = tables[0];
 
-                // Query!
-                query = "SELECT " + chosenColumns + " FROM " + chosenTables + " WHERE " + chosenConditions;
-                checkQueryAndOut(query, chosenColumnsArr, connection);
+
+                // enter a new values
+                System.out.println("Enter a new value(-s). For stop enter 'q'.");
+                value = reader.nextLine();
+                while (!Objects.equals(value, "q")) {
+                    builder.append(value).append("\n");
+                    value = reader.nextLine();
+                }
+                allValues = builder.toString().split("\n");
+
+                query = "UPDATE " + listTables + " SET ";
+                for (int i = 0; i < allValues.length; i++) {
+                    query += allValues[i];
+                    if (i + 1 < allValues.length)
+                        query += ", ";
+                }
+                query += " WHERE " + condition;
+                System.out.println(statement.executeUpdate(query) + " row(-s) changed.");
                 flag = true;
+
             } catch (SQLException e) {
                 if (Objects.equals(e.getMessage(), "Column")) {
                     System.out.println("\nYou wrote nonexistent column.");
@@ -879,6 +1017,117 @@ class DBDAO {
                         "you wrote some column or condition wrong.");
                 returnFromLinkExcep = linkExcep();
                 if (returnFromLinkExcep == 2) return;
+            } catch (ClassNotFoundException e) {
+                System.out.println("There was an error with driver which connected to database.");
+            }
+        }
+    }
+
+
+
+
+    static void deleteRecords(Connection connection, Statement statement)
+        throws SQLException {
+        boolean flag = false;
+        String tables[], condition, allConditions[], listTables;
+
+        while (!flag) {
+            try {
+                StringBuilder builder = new StringBuilder();
+
+                // Select table
+                tables = selectTables(statement);
+
+
+                // Check tables
+                if (tables.length > 2) {
+                    query = "SELECT DISTINCT table_name, column_name FROM INFORMATION_SCHEMA.COLUMNS " +
+                            "WHERE table_schema = 'task_sql' AND ";
+                    for (int i = 1; i < tables.length; i++) {
+                        query += "table_name = '" + tables[i] + "'";
+                        if (i + 1 < tables.length)
+                            query += " OR ";
+                    }
+                    checkQueryAndOut(query, new String[]{"table_name", "column_name"}, connection);
+                } else if (tables.length == 2) {
+                    query = "SELECT DISTINCT column_name FROM INFORMATION_SCHEMA.COLUMNS " +
+                            "WHERE table_schema = 'task_sql' AND table_name = '" + tables[1] + "'";
+                    checkQueryAndOut(query, new String[]{"column_name"}, connection);
+                } else throw new SQLException("Table");
+
+
+                // Enter the condition to search records to update
+                System.out.println("Enter consistently the conditions to search records" +
+                        "(separated by a line separator).\nThe conditions must be written in" +
+                        " the following format: 'field =/LIKE/>/</>=/<=/<>/IN some_value' " +
+                        "\nor 'field BETWEEN min_value AND max_value')." +
+                        "\nFor combine conditions must use 'AND' or 'OR'." +
+                        "\nIf you want to use subquery, you need to remember the SQL-syntax." +
+                        "\nIf you compare string field, value for comparing must be enclosed " +
+                        "in quotation marks.\nFor stop enter 'q'.");
+                condition = reader.nextLine();
+                while (!Objects.equals(condition, "q")) {
+                    builder.append(condition).append("\n");
+                    condition = reader.nextLine();
+                }
+                allConditions = builder.toString().split("\n");
+                condition = "";
+                for (int i = 0; i < allConditions.length; i++) {
+                    condition += allConditions[i];
+                    if (i + 1 < allConditions.length)
+                        if (!Objects.equals(allConditions[i].charAt(allConditions[i].length() - 1), ' ') &
+                                !Objects.equals(allConditions[i + 1].charAt(0), ' '))
+                            condition += " ";
+                }
+
+
+                // translation of an array of tables into a string
+                listTables = tables[0];
+
+                try {
+                    query = "DELETE FROM " + listTables + " WHERE " + condition;
+                    System.out.println(statement.executeUpdate(query) + " row(-s) deleted.");
+                    flag = true;
+                } catch (MySQLIntegrityConstraintViolationException e) {
+                    if (listTables.contains("developers,") || listTables.contains("developers ") ||
+                            listTables.equals("developers")) {
+                        System.out.println("Delete all links of the developer(-s).\n(developers_skills), " +
+                                "(developers_projects), (developers_companies)\n");
+                        deleteRecords(connection, statement);
+                    } else if (listTables.contains(" projects,") || listTables.contains(" projects ") ||
+                            listTables.equals("projects")) {
+                        System.out.println("Delete all links of the project(-s).\n(developers_projects), " +
+                                "(companies_projects), (customers_projects), (projects_skills)\n");
+                        deleteRecords(connection, statement);
+                    } else if (listTables.contains(" skills") || listTables.contains(" skills ") ||
+                            listTables.equals("skills")) {
+                        System.out.println("Delete all links of the skill(-s).\n(developers_skills), " +
+                                "(projects_skills)\n");
+                        deleteRecords(connection, statement);
+                    } else if (listTables.contains(" companies,") || listTables.contains(" companies ") ||
+                            listTables.equals("companies")) {
+                        System.out.println("Delete all links of the company(-ies).\n(developers_companies), " +
+                                "(companies_projects), (companies_customers)\n");
+                        deleteRecords(connection, statement);
+                    } else if (listTables.contains(" customers,") || listTables.contains(" customers ") ||
+                            listTables.equals("customers")) {
+                        System.out.println("Delete all links of the customer(-s).\n(companies_customers), " +
+                                "(customers_projects)\n");
+                        deleteRecords(connection, statement);
+                    }
+                }
+
+            } catch (SQLException e) {
+                if (Objects.equals(e.getMessage(), "Column")) {
+                    System.out.println("\nYou wrote nonexistent column.");
+                } else if (Objects.equals(e.getMessage(), "Table")) {
+                    System.out.println("\nYou wrote nonexistent table.");
+                } else System.out.println("\nSyntax error was made. Maybe, " +
+                        "you wrote some column or condition wrong.");
+                returnFromLinkExcep = linkExcep();
+                if (returnFromLinkExcep == 2) return;
+            } catch (ClassNotFoundException e) {
+                System.out.println("There was an error with driver which connected to database.");
             }
         }
     }

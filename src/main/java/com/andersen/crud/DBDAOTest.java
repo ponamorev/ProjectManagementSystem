@@ -1,91 +1,114 @@
 package com.andersen.crud;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Objects;
 import java.util.Scanner;
 
 class DBDAOTest {
-    private static Statement statement;
-    private static ResultSet resultSet;
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
         Connection connection = GetConnection.getConnection();
-        statement = connection.createStatement();
+        Statement statement = connection.createStatement();
 
-        Scanner reader = new Scanner(System.in);
-
-        DBDAO.readTables(connection, statement);
-
-        /*String query = DBDAO.findRecords("projects", statement);
-        DBDAO.checkQueryAndOut("projects", query, statement);*/
-
-        /*String mainMenu = "Choose the action with database:\n\t1. Create data\n\t" +
-                "2. Read data\n\t3. Update data\n\t4. Delete data\n\t5. Exit from the app\n\t" +
-                "6. Cancel";
+        String mainMenu = "Choose the action with database:\n\t1. Create data\n\t" +
+                "2. Read data\n\t3. Update data\n\t4. Delete data\n\t5. Exit from the app\n\t";
         String createMenu = "Choose a table where you will create a record(s):\n\t" +
                 "1. developers\n\t2. skills\n\t3. projects\n\t4. companies\n\t5. customers\n\t" +
-                "6. Cancel";
-        String readMenu = "Choose a table where the app will read records:\n\t" +
-                "1. developers\n\t2. skills\n\t3. projects\n\t4. companies\n\t5. customers\n\t" +
-                "6. Cancel";
-        String updateMenu = "Choose a table which will be updated:\n\t" +
-                "1. developers\n\t2. skills\n\t3. projects\n\t4. companies\n\t5. customers\n\t" +
-                "6. Cancel";
-        String deleteMenu = "Choose a table where you want to delete records:\n\t" +
-                "1. developers\n\t2. skills\n\t3. projects\n\t4. companies\n\t5. customers\n\t" +
-                "6. Cancel";
+                "6. developers_skills\n\t7. developers_projects\n\t8. developers_companies\n\t" +
+                "9. projects_skills\n\t10. companies_projects\n\t11. companies_customers\n\t" +
+                "12. customers_projects\n\t13. Cancel, back to main menu";
         String res;
 
-        boolean temp = true;
+        boolean flag = true;
 
         Scanner consoleReader = new Scanner(System.in);
 
         System.out.println("Welcome to the app! You can work with database \"task_sql\" here.");
 
-        while (temp) {
-            System.out.println(mainMenu);
-            System.out.print("Enter an action number:");
-            res = consoleReader.nextLine();
+        while (flag) {
+            try {
+                System.out.println(mainMenu);
+                System.out.print("Enter an action number: ");
+                res = consoleReader.nextLine();
 
-            switch (Integer.valueOf(res)) {
+                switch (Integer.valueOf(res)) {
 
-                case 1:
-                    System.out.println(createMenu);
-                    System.out.print("Enter table name or number from the list: ");
-                    res = consoleReader.nextLine();
+                    case 1:
+                        System.out.println(createMenu);
+                        System.out.print("Enter number from the list: ");
+                        res = consoleReader.nextLine();
 
-                    if (Integer.valueOf(res) == 1)
-                        res = "developers";
-                    else if (Integer.valueOf(res) == 2)
-                        res = "skills";
-                    else if (Integer.valueOf(res) == 3)
-                        res = "projects";
-                    else if (Integer.valueOf(res) == 4)
-                        res = "companies";
-                    else if (Integer.valueOf(res) == 5)
-                        res = "customers";
+                        switch (Integer.valueOf(res)) {
+                            case 1:
+                                DBDAO.createRecords("developers", connection, statement);
+                                break;
+                            case 2:
+                                DBDAO.createRecords("skills", connection, statement);
+                                break;
+                            case 3:
+                                DBDAO.createRecords("projects", connection, statement);
+                                break;
+                            case 4:
+                                DBDAO.createRecords("companies", connection, statement);
+                                break;
+                            case 5:
+                                DBDAO.createRecords("customers", connection, statement);
+                                break;
+                            case 6:
+                                DBDAO.createLinkRecords("developers", "skills", statement);
+                                break;
+                            case 7:
+                                DBDAO.createLinkRecords("developers", "projects", statement);
+                                break;
+                            case 8:
+                                DBDAO.createLinkRecords("developers", "companies", statement);
+                                break;
+                            case 9:
+                                DBDAO.createLinkRecords("projects", "skills", statement);
+                                break;
+                            case 10:
+                                DBDAO.createLinkRecords("companies", "projects", statement);
+                                break;
+                            case 11:
+                                DBDAO.createLinkRecords("companies", "customers", statement);
+                                break;
+                            case 12:
+                                DBDAO.createLinkRecords("customers", "projects", statement);
+                                break;
+                            case 13:
+                                break;
+                            default:
+                                System.out.println("Perhaps, it's mistake." +
+                                        " Enter the number again");
+                                break;
+                        }
 
-                    switch (res) {
-                        case "developers":
+                        break;
 
-                            break;
-                        case "skills":
-                            break;
-                        default:
-                            System.out.println("Perhaps, it's mistake." +
-                                    " Enter the word or number again");
-                            break;
-                    }
-                    break;
+                    case 2:
+                        DBDAO.readTables(connection, statement);
+                        break;
 
+                    case 3:
+                        DBDAO.updateRecords(connection, statement);
+                        break;
 
-                case 5:
-                    temp = false;
-                    break;
+                    case 4:
+                        DBDAO.deleteRecords(connection, statement);
+                        break;
+
+                    case 5:
+                        flag = false;
+                        break;
+
+                    default:
+                        System.out.println("You wrote wrong number. Please, try again.");
+                        break;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Don't press 'Enter', if you don't write a number. :)");
             }
-        }*/
+        }
     }
 }
