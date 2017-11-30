@@ -7,19 +7,29 @@ import java.util.Objects;
 import java.util.Scanner;
 
 class DBDAO {
-    private static String query, choise;
+    private static String query;
     private static int returnFromLinkExcep;
     private static Scanner reader = new Scanner(System.in);
-
-
+    private static final String textForConditions = "Enter consistently the conditions " +
+            "(separated by a line separator).\nThe conditions must be written in" +
+            " the following format: 'table.column =/LIKE/>/</>=/<=/<>/IN some_value' " +
+            "\nor 'table.column BETWEEN min_value AND max_value')." +
+            "\nFor combine conditions must use 'AND' or 'OR'." +
+            "\nIf you want to use subquery, you need to remember the SQL-syntax." +
+            "\nIf you compare string field, value for comparing must be enclosed " +
+            "in quotation marks.\nFor stop enter 'q'.";
 
 
     /**
+     * This method adds a new records in a one of the main tables
+     * Main tables: developers, skills, projects, companies, customers
+     *
      * @param table
+     * @param connection
      * @param statement
-     * @throws SQLException This method adds a new records in a one of the main tables
-     *                      Main tables: developers, skills, projects, companies, customers
+     * @throws SQLException
      */
+
     static void createRecords(String table, Connection connection, Statement statement)
             throws SQLException {
         boolean flag = false;
@@ -44,7 +54,7 @@ class DBDAO {
                         boolean more = false;
                         String createDev[] = new String[2];
                         System.out.println("Do you want to add a salary? (Y/N)");
-                        choise = reader.nextLine();
+                        String choise = reader.nextLine();
 
                         if (Objects.equals(choise, "Y") || Objects.equals(choise, "y")) {
 
@@ -323,21 +333,22 @@ class DBDAO {
 
 
     /**
+     * This method adds a link between a table1 and a table2 in a resultTable
+     * table1 and table2 are some of the main tables resultTable is the link table
+     * Link tables:
+     * - developers_skills
+     * - developers_projects
+     * - developers_companies
+     * - projects_skills
+     * - companies_projects
+     * - companies_customers
+     * - customers_projects
+     *
      * @param table1
      * @param table2
      * @param statement
      * @throws SQLException
-     * @throws NumberFormatException This method adds a link between a table1 and a table2 in a resultTable
-     *                               table1 and table2 are some of the main tables
-     *                               resultTable is the link table
-     *                               Link tables:
-     *                               developers_skills
-     *                               developers_projects
-     *                               developers_companies
-     *                               projects_skills
-     *                               companies_projects
-     *                               companies_customers
-     *                               customers_projects
+     * @throws NumberFormatException
      */
 
     static void createLinkRecords(String table1, String table2, Statement statement)
@@ -439,37 +450,26 @@ class DBDAO {
 
 
     /**
+     * This method lets you read records from the tables
+     *
+     * @param listTables
+     * @param listColumn
+     * @param columns
      * @param connection
-     * @param statement
-     * @throws SQLException This method lets to search records in any table
+     * @throws SQLException
      */
 
-    static void readTables(Connection connection, Statement statement)
+    static void readTables(String listTables, String listColumn, String[] columns,
+                           Connection connection)
             throws SQLException {
-        String chosenTablesArr[], chosenColumnsArr[], chosenColumns, condition, allConditionsArr[];
+        String condition, allConditionsArr[];
         boolean flag = false;
 
         while (!flag) try {
             StringBuilder builder = new StringBuilder();
 
-            // Select tables
-            chosenTablesArr = AccompanyingMethods.selectTables(statement);
-
-            // Select columns
-            chosenColumnsArr = AccompanyingMethods.selectColumns(chosenTablesArr, statement);
-            chosenColumns = chosenColumnsArr[0];
-            String cloneArr[] = new String[chosenColumnsArr.length - 1];
-            System.arraycopy(chosenColumnsArr, 1, cloneArr, 0, cloneArr.length);
-
             // Select to conditions to search
-            System.out.println("Enter consistently the conditions to search" +
-                    "(separated by a line separator).\nThe conditions must be written in" +
-                    " the following format: 'field =/LIKE/>/</>=/<=/<>/IN some_value' " +
-                    "\nor 'field BETWEEN min_value AND max_value')." +
-                    "\nFor combine conditions must use 'AND' or 'OR'." +
-                    "\nIf you want to use subquery, you need to remember the SQL-syntax." +
-                    "\nIf you compare string field, value for comparing must be enclosed " +
-                    "in quotation marks.\nFor stop enter 'q'.");
+            System.out.println(textForConditions);
 
             condition = reader.nextLine();
             while (!Objects.equals(condition, "q")) {
@@ -492,37 +492,37 @@ class DBDAO {
 
             // Query!
             if (!Objects.equals(condition, ""))
-                query = "SELECT " + chosenColumns + " FROM " + chosenTablesArr[0] + " WHERE " + condition;
-            else query = "SELECT " + chosenColumns + " FROM " + chosenTablesArr[0];
+                query = "SELECT " + listColumn + " FROM " + listTables + " WHERE " + condition;
+            else query = "SELECT " + listColumn + " FROM " + listTables;
 
 
-            AccompanyingMethods.checkQueryAndOut(query, cloneArr, connection);
+            AccompanyingMethods.checkQueryAndOut(query, columns, connection);
             flag = true;
-            } catch(SQLException e){
-                if (Objects.equals(e.getMessage(), "Column")) {
-                    System.out.println("\nYou wrote nonexistent column.");
-                } else if (Objects.equals(e.getMessage(), "Table")) {
-                    System.out.println("\nYou wrote nonexistent table.");
-                } else System.out.println("\nSyntax error was made. Maybe, " +
-                        "you wrote some column or condition wrong.");
-                returnFromLinkExcep = AccompanyingMethods.linkExcep();
-                if (returnFromLinkExcep == 2) return;
-            } catch(ClassNotFoundException e){
-                System.out.println("There was an error with driver which connected to database.");
-            }
+
+        } catch (SQLException e) {
+            if (Objects.equals(e.getMessage(), "Column")) {
+                System.out.println("\nYou wrote nonexistent column.");
+            } else if (Objects.equals(e.getMessage(), "Table")) {
+                System.out.println("\nYou wrote nonexistent table.");
+            } else System.out.println("\nSyntax error was made. Maybe, " +
+                    "you wrote some column or condition wrong.");
+            returnFromLinkExcep = AccompanyingMethods.linkExcep();
+            if (returnFromLinkExcep == 2) return;
         }
+    }
 
 
     /**
      * This method updates values in the tables
-     * @param connection
+     *
+     * @param listTables
      * @param statement
      * @throws SQLException
      */
-    static void updateRecords(Connection connection, Statement statement)
+
+    static void updateRecords(String listTables, Statement statement)
             throws SQLException {
-        String condition, allConditions[], listTables = "", value, allValues[],
-                tables[];
+        String condition, allConditions[], value, allValues[];
         boolean flag = false;
 
 
@@ -530,33 +530,8 @@ class DBDAO {
             try {
                 StringBuilder builder = new StringBuilder();
 
-                // Select table
-                tables = AccompanyingMethods.selectTables(statement);
-
-                if (tables.length > 1) {
-                    query = "SELECT DISTINCT table_name, column_name FROM INFORMATION_SCHEMA.COLUMNS " +
-                            "WHERE table_schema = 'task_sql' AND ";
-                    for (int i = 0; i < tables.length; i++) {
-                        query += "table_name = '" + tables[i] + "'";
-                        if (i + 1 < tables.length)
-                            query += " OR ";
-                    }
-                    AccompanyingMethods.checkQueryAndOut(query, new String[]{"table_name", "column_name"}, connection);
-                } else if (tables.length == 1) {
-                    query = "SELECT DISTINCT column_name FROM INFORMATION_SCHEMA.COLUMNS " +
-                            "WHERE table_schema = 'task_sql' AND table_name = '" + tables[0] + "'";
-                    AccompanyingMethods.checkQueryAndOut(query, new String[]{"column_name"}, connection);
-                } else throw new SQLException("Table");
-
                 // Enter the condition to search records to update
-                System.out.println("Enter consistently the conditions to search records" +
-                        "(separated by a line separator).\nThe conditions must be written in" +
-                        " the following format: 'field =/LIKE/>/</>=/<=/<>/IN some_value' " +
-                        "\nor 'field BETWEEN min_value AND max_value')." +
-                        "\nFor combine conditions must use 'AND' or 'OR'." +
-                        "\nIf you want to use subquery, you need to remember the SQL-syntax." +
-                        "\nIf you compare string field, value for comparing must be enclosed " +
-                        "in quotation marks.\nFor stop enter 'q'.");
+                System.out.println(textForConditions);
                 condition = reader.nextLine();
                 while (!Objects.equals(condition, "q")) {
                     builder.append(condition).append("\n");
@@ -571,11 +546,6 @@ class DBDAO {
                                 !Objects.equals(allConditions[i + 1].charAt(0), ' '))
                             condition += " ";
                 }
-
-
-                // translation of an array of tables into a string
-                listTables = tables[0];
-
 
                 // enter a new values
                 System.out.println("Enter a new value(-s). For stop enter 'q'.");
@@ -605,118 +575,130 @@ class DBDAO {
                         "you wrote some column or condition wrong.");
                 returnFromLinkExcep = AccompanyingMethods.linkExcep();
                 if (returnFromLinkExcep == 2) return;
-            } catch (ClassNotFoundException e) {
-                System.out.println("There was an error with driver which connected to database.");
             }
         }
     }
 
 
+    /**
+     * This method deletes values from the tables. If tables are main, all links must be deleted automatically
+     *
+     * @param listTables
+     * @param condition
+     * @param statement
+     * @throws SQLException
+     */
 
+    static int deleteRecords(String listTables, String condition, Statement statement)
+            throws SQLException {
+        String newCondition;
+        int flag = 1;
 
-    static void deleteRecords(Connection connection, Statement statement)
-        throws SQLException {
-        boolean flag = false;
-        String tables[], condition, allConditions[], listTables;
+        try {
 
-        while (!flag) {
-            try {
-                StringBuilder builder = new StringBuilder();
+            query = "DELETE FROM " + listTables + " WHERE " + condition;
+            System.out.println(statement.executeUpdate(query) + " row(-s) deleted.");
 
-                // Select table
-                tables = AccompanyingMethods.selectTables(statement);
+            flag = 0;
 
+        } catch (MySQLIntegrityConstraintViolationException e) {
+            if (listTables.contains("developers,") || listTables.contains("developers ") ||
+                    listTables.equals("developers")) {
 
-                // Check tables
-                if (tables.length > 2) {
-                    query = "SELECT DISTINCT table_name, column_name FROM INFORMATION_SCHEMA.COLUMNS " +
-                            "WHERE table_schema = 'task_sql' AND ";
-                    for (int i = 1; i < tables.length; i++) {
-                        query += "table_name = '" + tables[i] + "'";
-                        if (i + 1 < tables.length)
-                            query += " OR ";
-                    }
-                    AccompanyingMethods.checkQueryAndOut(query, new String[]{"table_name", "column_name"}, connection);
-                } else if (tables.length == 2) {
-                    query = "SELECT DISTINCT column_name FROM INFORMATION_SCHEMA.COLUMNS " +
-                            "WHERE table_schema = 'task_sql' AND table_name = '" + tables[1] + "'";
-                    AccompanyingMethods.checkQueryAndOut(query, new String[]{"column_name"}, connection);
-                } else throw new SQLException("Table");
-
-
-                // Enter the condition to search records to update
-                System.out.println("Enter consistently the conditions to search records" +
-                        "(separated by a line separator).\nThe conditions must be written in" +
-                        " the following format: 'field =/LIKE/>/</>=/<=/<>/IN some_value' " +
-                        "\nor 'field BETWEEN min_value AND max_value')." +
-                        "\nFor combine conditions must use 'AND' or 'OR'." +
-                        "\nIf you want to use subquery, you need to remember the SQL-syntax." +
-                        "\nIf you compare string field, value for comparing must be enclosed " +
-                        "in quotation marks.\nFor stop enter 'q'.");
-                condition = reader.nextLine();
-                while (!Objects.equals(condition, "q")) {
-                    builder.append(condition).append("\n");
-                    condition = reader.nextLine();
-                }
-                allConditions = builder.toString().split("\n");
-                condition = "";
-                for (int i = 0; i < allConditions.length; i++) {
-                    condition += allConditions[i];
-                    if (i + 1 < allConditions.length)
-                        if (!Objects.equals(allConditions[i].charAt(allConditions[i].length() - 1), ' ') &
-                                !Objects.equals(allConditions[i + 1].charAt(0), ' '))
-                            condition += " ";
-                }
-
-
-                // translation of an array of tables into a string
-                listTables = tables[0];
+                newCondition = AccompanyingMethods.newConditions(condition, "developers");
 
                 try {
-                    query = "DELETE FROM " + listTables + " WHERE " + condition;
-                    System.out.println(statement.executeUpdate(query) + " row(-s) deleted.");
-                    flag = true;
-                } catch (MySQLIntegrityConstraintViolationException e) {
-                    if (listTables.contains("developers,") || listTables.contains("developers ") ||
-                            listTables.equals("developers")) {
-                        System.out.println("Delete all links of the developer(-s).\n(developers_skills), " +
-                                "(developers_projects), (developers_companies)\n");
-                        deleteRecords(connection, statement);
-                    } else if (listTables.contains(" projects,") || listTables.contains(" projects ") ||
-                            listTables.equals("projects")) {
-                        System.out.println("Delete all links of the project(-s).\n(developers_projects), " +
-                                "(companies_projects), (customers_projects), (projects_skills)\n");
-                        deleteRecords(connection, statement);
-                    } else if (listTables.contains(" skills") || listTables.contains(" skills ") ||
-                            listTables.equals("skills")) {
-                        System.out.println("Delete all links of the skill(-s).\n(developers_skills), " +
-                                "(projects_skills)\n");
-                        deleteRecords(connection, statement);
-                    } else if (listTables.contains(" companies,") || listTables.contains(" companies ") ||
-                            listTables.equals("companies")) {
-                        System.out.println("Delete all links of the company(-ies).\n(developers_companies), " +
-                                "(companies_projects), (companies_customers)\n");
-                        deleteRecords(connection, statement);
-                    } else if (listTables.contains(" customers,") || listTables.contains(" customers ") ||
-                            listTables.equals("customers")) {
-                        System.out.println("Delete all links of the customer(-s).\n(companies_customers), " +
-                                "(customers_projects)\n");
-                        deleteRecords(connection, statement);
-                    }
+
+                    deleteRecords("developers_skills", "id_developer IN (SELECT id " +
+                            "FROM developers WHERE " + newCondition + ")", statement);
+                    deleteRecords("developers_projects", "id_developer IN (SELECT id " +
+                            "FROM developers WHERE " + newCondition + ")", statement);
+                    deleteRecords("developers_companies", "id_developer IN (SELECT id " +
+                            "FROM developers WHERE " + newCondition + ")", statement);
+
+                } catch (NullPointerException nullE) {
+                    System.out.println("You wrote wrond comditions.");
                 }
 
-            } catch (SQLException e) {
-                if (Objects.equals(e.getMessage(), "Column")) {
-                    System.out.println("\nYou wrote nonexistent column.");
-                } else if (Objects.equals(e.getMessage(), "Table")) {
-                    System.out.println("\nYou wrote nonexistent table.");
-                } else System.out.println("\nSyntax error was made. Maybe, " +
-                        "you wrote some column or condition wrong.");
-                returnFromLinkExcep = AccompanyingMethods.linkExcep();
-                if (returnFromLinkExcep == 2) return;
-            } catch (ClassNotFoundException e) {
-                System.out.println("There was an error with driver which connected to database.");
+            } else if (listTables.contains(" projects,") || listTables.contains(" projects ") ||
+                    listTables.equals("projects")) {
+
+                newCondition = AccompanyingMethods.newConditions(condition, "projects");
+
+                try {
+
+                    deleteRecords("developers_projects", "id_project IN (SELECT id " +
+                            "FROM projects WHERE " + newCondition + ")", statement);
+                    deleteRecords("projects_skills", "id_project IN (SELECT id " +
+                            "FROM projects WHERE " + newCondition + ")", statement);
+                    deleteRecords("companies_projects", "id_project IN (SELECT id " +
+                            "FROM projects WHERE " + newCondition + ")", statement);
+                    deleteRecords("customers_projects", "id_project IN (SELECT id " +
+                            "FROM projects WHERE " + newCondition + ")", statement);
+
+                } catch (NullPointerException nullE) {
+                    System.out.println("You wrote wrond comditions.");
+                }
+
+
+            } else if (listTables.contains(" skills,") || listTables.contains(" skills ") ||
+                    listTables.equals("skills")) {
+
+                newCondition = AccompanyingMethods.newConditions(condition, "skills");
+
+                try {
+
+                    deleteRecords("developers_skills", "id_skill IN (SELECT id " +
+                            "FROM skills WHERE " + newCondition + ")", statement);
+                    deleteRecords("projects_skills", "id_skill IN (SELECT id " +
+                            "FROM skills WHERE " + newCondition + ")", statement);
+
+                } catch (NullPointerException nullE) {
+                    System.out.println("You wrote wrond comditions.");
+                }
+
+            } else if (listTables.contains(" companies,") || listTables.contains(" companies ") ||
+                    listTables.equals("companies")) {
+
+                newCondition = AccompanyingMethods.newConditions(condition, "companies");
+
+                try {
+
+                    deleteRecords("developers_companies", "id_company IN (SELECT id " +
+                            "FROM companies WHERE " + newCondition + ")", statement);
+                    deleteRecords("companies_projects", "id_company IN (SELECT id " +
+                            "FROM companies WHERE " + newCondition + ")", statement);
+                    deleteRecords("companies_customers", "id_company IN (SELECT id " +
+                            "FROM companies WHERE " + newCondition + ")", statement);
+
+                } catch (NullPointerException nullE) {
+                    System.out.println("You wrote wrond comditions.");
+                }
+
+            } else if (listTables.contains(" customers,") || listTables.contains(" customers ") ||
+                    listTables.equals("customers")) {
+
+                newCondition = AccompanyingMethods.newConditions(condition, "customers");
+
+                try {
+
+                    deleteRecords("customers_projects", "id_customer IN (SELECT id " +
+                            "FROM customers WHERE " + newCondition + ")", statement);
+                    deleteRecords("companies_customers", "id_customer IN (SELECT id " +
+                            "FROM customers WHERE " + newCondition + ")", statement);
+
+                } catch (NullPointerException nullE) {
+                    System.out.println("You wrote wrond comditions.");
+                }
+
             }
+        } catch (SQLException e) {
+            System.out.println("\nSyntax error was made. Maybe, " +
+                    "you wrote some column or condition wrong.");
+            returnFromLinkExcep = AccompanyingMethods.linkExcep();
+            if (returnFromLinkExcep == 2) flag = 0;
         }
+
+        return flag;
     }
 }

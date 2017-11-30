@@ -61,7 +61,7 @@ class AccompanyingMethods {
     }
 
     static String checkID(int ID1, int ID2, String name1, String name2, String DB1, String DB2,
-                                  String DBforChange, String field1, String field2, Statement statement)
+                          String DBforChange, String field1, String field2, Statement statement)
             throws SQLException {
         ResultSet result;
         int count;
@@ -319,7 +319,7 @@ class AccompanyingMethods {
         // Select tables
 
         // Output all tables
-        System.out.println("Select table(-s) to search.\nList of tables is shown below.");
+        System.out.println("List of tables is shown below.");
         query = "SELECT DISTINCT table_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'task_sql'";
         checkQueryAndOut(query, new String[]{"table_name"}, GetConnection.getConnection());
         result = statement.executeQuery(query);
@@ -428,4 +428,58 @@ class AccompanyingMethods {
         return chosenColumnsArr;
     }
 
+    static String newConditions(String conditions, String table) {
+        boolean check = false;
+        String newCondition = "";
+        int index, dIndex = 0;
+        char[] ncond;
+        StringBuilder builder = new StringBuilder();
+
+        if (conditions.contains(table + ".")) {
+            newCondition = table + ".";
+            ncond = newCondition.toCharArray();
+            dIndex = ncond.length;
+
+            while (!check) {
+                index = conditions.indexOf(table + ".") + dIndex;
+                newCondition += conditions.substring(index);
+
+                ncond = newCondition.toCharArray();
+                for (int i = 0; i < ncond.length; i++) {
+                    if (ncond[i] == ',') {
+                        newCondition = "";
+                        for (int j = 0; j <= i; j++)
+                            newCondition += ncond[j];
+                        builder.append(newCondition);
+                        dIndex = i;
+                        break;
+                    }
+                }
+
+                if (Objects.equals(builder.toString(), "")) {
+                    newCondition = "";
+                    for (int i = 0; i < ncond.length; i++)
+                        newCondition += ncond[i];
+                    builder.append(newCondition);
+
+                }
+
+                try {
+                    conditions = conditions.substring(index + dIndex);
+                } catch (StringIndexOutOfBoundsException e) {
+                    conditions = "";
+                }
+
+                if (!conditions.contains(table + "."))
+                    check = true;
+                else builder.append(", ");
+            }
+        }
+
+        if (!Objects.equals(builder.toString(), ""))
+            newCondition = builder.toString();
+        else newCondition = null;
+
+        return newCondition;
+    }
 }
