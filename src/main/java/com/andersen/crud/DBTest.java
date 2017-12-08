@@ -338,10 +338,11 @@ class DBTest {
                 Connection connection = DriverManager.getConnection(DATABASE_URL, USER, PASSWORD);
                 Statement statement = connection.createStatement();
 
-                System.out.println("\t1. developers.\n\t2. skills\n\t3. projects\n\t4. companies\n\t5. customers\nFor exit enter 'q'.");
+                System.out.println("\t1. developers.\n\t2. skills\n\t3. projects\n\t4. companies\n\t5. customers\n" +
+                        "\t6. Search from many tables.\nFor exit enter 'q'.");
                 System.out.print("Choose a table for working: ");
                 choice = reader.nextLine();
-                if (CommonMethods.isNumber(choice))
+                if (CommonMethods.isNumber(choice)) {
                     switch (choice) {
                         case "1":
                             choice = "developers";
@@ -358,6 +359,8 @@ class DBTest {
                         case "5":
                             choice = "customers";
                             break;
+                        case "6":
+                            break;
                         default:
                             System.out.println("You wrote wrong number or name of the table.\n" +
                                     "Do you want to try again? (Y/any key)");
@@ -366,9 +369,11 @@ class DBTest {
                                 return;
                             break;
                     }
+                }
 
-
-                if (!choice.equals("q"))
+                if (choice.equals("6"))
+                    CommonView.viewData(connection);
+                else if (!choice.equals("q"))
                     action(choice, DBTest.choosingAction(choice), connection, statement);
                 else {
                     System.out.println("Thank you for using this application! Good bye!");

@@ -19,30 +19,6 @@ class CustomersDAO {
     }
 
 
-    private Customers checkCustomer(int id, String name, Statement statement)
-            throws SQLException, NullPointerException {
-        Customers cust = null;
-
-        if (id != 0) {
-            query = "SELECT * FROM customers WHERE id = " + id;
-            result = statement.executeQuery(query);
-            while (result.next())
-                cust = new Customers(result.getInt("id"),
-                        result.getString("name"));
-            return cust;
-        } else if (!name.equals("") ||
-                !Objects.equals(name, null)) {
-            query = "SELECT * FROM developers WHERE name = '" + name + "'";
-            result = statement.executeQuery(query);
-            while (result.next())
-                cust = new Customers(result.getInt("id"),
-                        result.getString("name"));
-            return cust;
-        }
-
-        return null;
-    }
-
     private void unsuccessUpOrDel(Connection connection, Statement statement)
             throws SQLException {
         if (choice.equals("y") || choice.equals("Y")) {
@@ -92,10 +68,10 @@ class CustomersDAO {
 
                 if (id != 0) {
                     if (table.equals("companies"))
-                        query = "INSERT INTO " + table + "_customers VALUES (" + choice +
+                        query = "INSERT INTO " + table + "_customers VALUES (" + id +
                                 ", " + customer.getID() + ")";
                     else query = "INSERT INTO customers_" + table + " VALUES (" + customer.getID() +
-                            ", " + choice + ")";
+                            ", " + id + ")";
                     System.out.println("Add " + statement.executeUpdate(query) + " row(-s) in the table..");
 
                     System.out.println("Would you like to add another " + tableObjectName + "? (Y/any key)");
@@ -113,15 +89,19 @@ class CustomersDAO {
     void createCustomer(Customers customer, Connection connection, Statement statement)
             throws SQLException {
         String ID, name;
-        int id;
+        int id = 0;
 
         if (customer == null) {
 
-            System.out.print("Enter ID (optional, click enter for skip): ");
-            ID = reader.nextLine();
-            if (ID.equals(""))
-                ID = "0";
-            id = Integer.parseInt(ID);
+            do {
+                System.out.print("Enter ID (optional, click enter for skip): ");
+                ID = reader.nextLine();
+                if (ID.equals(""))
+                    ID = "0";
+                if (CommonMethods.isNumber(ID))
+                    id = Integer.parseInt(ID);
+                else System.out.println("You didn't write a number! Try again.");
+            } while (!CommonMethods.isNumber(ID));
 
             System.out.print("Enter the name: ");
             name = reader.nextLine();
@@ -158,10 +138,11 @@ class CustomersDAO {
                 System.out.println("This ID is busied." +
                         " The new customer will have ID = " + id);
                 customer.setID(id);
-
-                query = "INSERT INTO customers VALUES (" + id + ", '" + customer.getName() + "')";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
             }
+
+            query = "INSERT INTO customers VALUES (" + id + ", '" + customer.getName() + "')";
+            System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
+
         } else {
             query = "INSERT INTO customers VALUES (NULL, '" + customer.getName() + "')";
             System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");

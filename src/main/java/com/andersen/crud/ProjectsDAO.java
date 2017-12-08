@@ -4,6 +4,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -19,67 +23,17 @@ class ProjectsDAO {
     }
 
 
-    private Projects checkProject(int id, String name, String description,
-                                  String start, String deadline, int cost, Statement statement)
-            throws SQLException, NullPointerException {
-        Projects proj = null;
-
-        if (id != 0) {
-            query = "SELECT * FROM projects WHERE id = " + id;
-            result = statement.executeQuery(query);
-            while (result.next())
-                proj = new Projects(result.getInt("id"),
-                        result.getString("name"), result.getString("description"),
-                        result.getString("start"), result.getString("deadline"),
-                        result.getInt("cost"));
-            return proj;
-        } else if (!name.equals("") ||
-                !Objects.equals(name, null)) {
-            query = "SELECT * FROM projects WHERE name = '" + name + "'";
-            result = statement.executeQuery(query);
-            while (result.next())
-                proj = new Projects(result.getInt("id"),
-                        result.getString("name"), result.getString("description"),
-                        result.getString("start"), result.getString("deadline"),
-                        result.getInt("cost"));
-            return proj;
-        } else if (!start.equals("") ||
-                !Objects.equals(start, null)) {
-            query = "SELECT * FROM projects WHERE start = '" + start + "' LIMIT 1";
-            result = statement.executeQuery(query);
-            while (result.next())
-                proj = new Projects(result.getInt("id"),
-                        result.getString("name"), result.getString("description"),
-                        result.getString("start"), result.getString("deadline"),
-                        result.getInt("cost"));
-            return proj;
-        } else if (!deadline.equals("") ||
-                !Objects.equals(deadline, null)) {
-            query = "SELECT * FROM projects WHERE deadline = '" + deadline + "' LIMIT 1";
-            result = statement.executeQuery(query);
-            while (result.next())
-                proj = new Projects(result.getInt("id"),
-                        result.getString("name"), result.getString("description"),
-                        result.getString("start"), result.getString("deadline"),
-                        result.getInt("cost"));
-            return proj;
-        } else if (cost != 0) {
-            query = "SELECT * FROM projects WHERE cost = " + cost + " LIMIT 1";
-            result = statement.executeQuery(query);
-            while (result.next())
-                proj = new Projects(result.getInt("id"),
-                        result.getString("name"), result.getString("description"),
-                        result.getString("start"), result.getString("deadline"),
-                        result.getInt("cost"));
-            return proj;
-        }
-
-        return null;
-    }
-
     private void unsuccessUpOrDel(Connection connection, Statement statement)
             throws SQLException, NullPointerException {
         Projects chProject;
+        String start, deadline = "";
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        Date startDate = new Date();
+        Calendar instance = Calendar.getInstance();
+        instance.setTime(startDate);
+        instance.add(Calendar.YEAR, 1);
+        Date endDate = instance.getTime();
+
         if (choice.equals("y") || choice.equals("Y")) {
             System.out.print("Enter the name: ");
             chProject = new Projects(0, reader.nextLine(), "", "", "", 0);
@@ -89,12 +43,44 @@ class ProjectsDAO {
                 System.out.println("Enter the description..");
                 chProject.setDescription(reader.nextLine());
             }
-            System.out.print("Start of the project: ");
-            chProject.setStart(reader.nextLine());
-            CommonMethods.checkDate(chProject.getStart());
-            System.out.print("End of the project: ");
-            chProject.setDeadline(reader.nextLine());
-            CommonMethods.checkDate(chProject.getDeadline());
+            try {
+                System.out.println("Do you want to set the default deadline for the project " +
+                        "execution (one year)? (Y/any key)");
+                choice = reader.nextLine();
+                if (choice.equals("y") || choice.equals("Y")) {
+                    start = format.format(startDate);
+                    deadline = format.format(endDate);
+                } else {
+                    boolean date = true;
+                    System.out.print("Start of the project (YYYY-MM-DD): ");
+                    start = reader.nextLine();
+                    start = CommonMethods.checkDate(start);
+                    startDate = format.parse(start);
+
+                    while (date) {
+                        System.out.print("End of the project (YYYY-MM-DD): ");
+                        deadline = reader.nextLine();
+                        deadline = CommonMethods.checkDate(deadline);
+                        endDate = format.parse(deadline);
+
+                        if (startDate.before(endDate))
+                            date = false;
+                        else System.out.println("End of the project can't be early than start! Try again.");
+                    }
+                }
+            } catch (ParseException e) {
+                System.out.println("There is a problem with parsing date. The deadline will set default.");
+                start = "";
+                deadline = "";
+            }
+            if (start.equals(""))
+                start = format.format(startDate);
+            if (deadline.equals(""))
+                deadline = format.format(endDate);
+
+            chProject.setStart(start);
+            chProject.setDeadline(deadline);
+
             System.out.print("Project cost: ");
             chProject.setCost(Integer.parseInt(reader.nextLine()));
 
@@ -152,8 +138,8 @@ class ProjectsDAO {
                 if (id != 0) {
                     if (table.equals("skills"))
                         query = "INSERT INTO projects_" + table + " VALUES (" + project.getID() +
-                                ", " + choice + ")";
-                    else query = "INSERT INTO " + table + "_projects VALUES (" + choice +
+                                ", " + id + ")";
+                    else query = "INSERT INTO " + table + "_projects VALUES (" + id +
                             ", " + project.getID() + ")";
                     System.out.println("Add " + statement.executeUpdate(query) + " row(-s) in the table..");
 
@@ -171,16 +157,25 @@ class ProjectsDAO {
 
     void createProject(Projects project, Connection connection, Statement statement)
             throws SQLException {
-        String ID, name, description, start, deadline;
-        int cost, id;
+        Date startDate = new Date();
+        Calendar instance = Calendar.getInstance();
+        instance.setTime(startDate);
+        instance.add(Calendar.YEAR, 1);
+        Date endDate = instance.getTime();
+        String ID, name, description, start, deadline = "";
+        int cost, id = 0;
 
         if (project == null) {
 
-            System.out.print("Enter ID (optional, click enter for skip): ");
-            ID = reader.nextLine();
-            if (ID.equals(""))
-                ID = "0";
-            id = Integer.parseInt(ID);
+            do {
+                System.out.print("Enter ID (optional, click enter for skip): ");
+                ID = reader.nextLine();
+                if (ID.equals(""))
+                    ID = "0";
+                if (CommonMethods.isNumber(ID))
+                    id = Integer.parseInt(ID);
+                else System.out.println("You didn't write a number! Try again.");
+            } while (!CommonMethods.isNumber(ID));
 
             System.out.print("Enter the name: ");
             name = reader.nextLine();
@@ -192,13 +187,44 @@ class ProjectsDAO {
                 description = reader.nextLine();
             } else description = "";
 
-            System.out.print("Enter the start of the project (YYYY-MM-DD): ");
-            start = reader.nextLine();
-            CommonMethods.checkDate(start);
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            try {
+                System.out.println("Do you want to set the default deadline for the project " +
+                        "execution (one year)? (Y/any key)");
+                choice = reader.nextLine();
+                if (choice.equals("y") || choice.equals("Y")) {
+                    start = format.format(startDate);
+                    deadline = format.format(endDate);
+                } else {
+                    boolean date = true;
+                    System.out.print("Enter the start of the project (YYYY-MM-DD): ");
+                    start = reader.nextLine();
+                    start = CommonMethods.checkDate(start);
+                    startDate = format.parse(start);
 
-            System.out.print("Enter the end of the project (YYYY-MM-DD): ");
-            deadline = reader.nextLine();
-            CommonMethods.checkDate(deadline);
+                    while (date) {
+                        System.out.print("Enter the end of the project (YYYY-MM-DD): ");
+                        deadline = reader.nextLine();
+                        deadline = CommonMethods.checkDate(deadline);
+                        endDate = format.parse(deadline);
+
+                        if (startDate.before(endDate))
+                            date = false;
+                        else System.out.println("End of the project can't be early than start! Try again.");
+                    }
+                }
+
+            } catch (ParseException e) {
+                System.out.println("There is a problem with parsing date. The deadline will set default.");
+                start = "";
+                deadline = "";
+            }
+
+            if (start.equals("")) {
+                start = format.format(startDate);
+            }
+            if (deadline.equals(""))
+                deadline = format.format(endDate);
 
             System.out.print("Enter the project cost: ");
             cost = reader.nextInt();
@@ -236,12 +262,13 @@ class ProjectsDAO {
                 System.out.println("This ID is busied." +
                         " The new project will have ID = " + id);
                 project.setID(id);
-
-                query = "INSERT INTO projects VALUES (" + id + ", '" + project.getName() +
-                        "', '" + project.getDescription() + "', '" + project.getStart() +
-                        "', '" + project.getDeadline() + "', " + project.getCost() + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
             }
+
+            query = "INSERT INTO projects VALUES (" + id + ", '" + project.getName() +
+                    "', '" + project.getDescription() + "', '" + project.getStart() +
+                    "', '" + project.getDeadline() + "', " + project.getCost() + ")";
+            System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
+
         } else {
             query = "INSERT INTO projects VALUES (NULL, '" + project.getName() +
                     "', '" + project.getDescription() + "', '" + project.getStart() +
@@ -279,14 +306,20 @@ class ProjectsDAO {
 
         StringBuilder builder = new StringBuilder();
         boolean flag = false;
+        String column, value;
 
         CommonMethods.printTableColumns("projects", connection);
         while (!flag) {
             System.out.println("Choose a column to change (except ID)..");
-            builder.append(reader.nextLine());
+            column = reader.nextLine();
+            builder.append(column);
             System.out.println("Enter a new value. If you chose a string or a date column, you should write a new value " +
                     "in single quotes.\nDate must be written in format 'YYYY-MM-DD'.");
-            builder.append(" = ").append(reader.nextLine());
+            value = reader.nextLine();
+            if (column.equals("start") || column.equals("deadline")) {
+                value = CommonMethods.checkDate(value);
+            }
+            builder.append(" = ").append(value);
             System.out.println("Would you like to change another column? (Y/any key)");
             choice = reader.nextLine();
             if (!choice.equals("y") && !choice.equals("Y"))
@@ -299,8 +332,8 @@ class ProjectsDAO {
             System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
 
         } else {
-            System.out.println("The developer wasn't found. Would you like " +
-                    "to add a new developer? (Y/any key)");
+            System.out.println("The project wasn't found. Would you like " +
+                    "to add a new project? (Y/any key)");
             choice = reader.nextLine();
             unsuccessUpOrDel(connection, statement);
         }
@@ -347,8 +380,8 @@ class ProjectsDAO {
             query = "DELETE FROM projects WHERE id = " + this.project.getID();
             System.out.println("Delete " + statement.executeUpdate(query) + " from the projects..");
         } else {
-            System.out.println("The developer wasn't found. Would you like " +
-                    "to add a new developer? (Y/any key)");
+            System.out.println("The project wasn't found. Would you like " +
+                    "to add a new project? (Y/any key)");
             choice = reader.nextLine();
             unsuccessUpOrDel(connection, statement);
         }

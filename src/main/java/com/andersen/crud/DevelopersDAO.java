@@ -19,37 +19,6 @@ class DevelopersDAO {
     }
 
 
-    private Developers checkDeveloper(int id, String name, int salary, Statement statement)
-            throws SQLException, NullPointerException {
-        Developers dev = null;
-
-        if (id != 0) {
-            query = "SELECT * FROM developers WHERE id = " + id;
-            result = statement.executeQuery(query);
-            while (result.next())
-                dev = new Developers(result.getInt("id"),
-                        result.getString("name"), result.getInt("salary"));
-            return dev;
-        } else if (!name.equals("") ||
-                !Objects.equals(name, null)) {
-            query = "SELECT * FROM developers WHERE name = '" + name + "'";
-            result = statement.executeQuery(query);
-            while (result.next())
-                dev = new Developers(result.getInt("id"),
-                        result.getString("name"), result.getInt("salary"));
-            return dev;
-        } else if (salary != 0) {
-            query = "SELECT * FROM developers WHERE salary = " + salary + " LIMIT 1";
-            result = statement.executeQuery(query);
-            while (result.next())
-                dev = new Developers(result.getInt("id"),
-                        result.getString("name"), result.getInt("salary"));
-            return dev;
-        }
-
-        return null;
-    }
-
     private void unsuccessUpOrDel(Connection connection, Statement statement)
             throws SQLException {
         Developers dev;
@@ -127,15 +96,19 @@ class DevelopersDAO {
     void createDeveloper(Developers developer, Connection connection, Statement statement)
             throws SQLException, NullPointerException {
         String ID, name;
-        int salary, id;
+        int salary, id = 0;
 
         if (developer == null) {
 
-            System.out.print("Enter ID (optional, click enter for skip): ");
-            ID = reader.nextLine();
-            if (ID.equals(""))
-                ID = "0";
-            id = Integer.parseInt(ID);
+            do {
+                System.out.print("Enter ID (optional, click enter for skip): ");
+                ID = reader.nextLine();
+                if (ID.equals(""))
+                    ID = "0";
+                if (CommonMethods.isNumber(ID))
+                    id = Integer.parseInt(ID);
+                else System.out.println("You didn't write a number! Try again.");
+            } while (!CommonMethods.isNumber(ID));
 
             System.out.print("Enter the name: ");
             name = reader.nextLine();
@@ -180,11 +153,12 @@ class DevelopersDAO {
                 System.out.println("Chosen ID is busied." +
                         " The new developer will have ID = " + id);
                 developer.setID(id);
-
-                query = "INSERT INTO developers VALUES (" + id + ", '" + developer.getName() +
-                        "', " + developer.getSalary() + ")";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
             }
+
+            query = "INSERT INTO developers VALUES (" + id + ", '" + developer.getName() +
+                    "', " + developer.getSalary() + ")";
+            System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
+
         } else {
             query = "INSERT INTO developers VALUES (NULL, '" + developer.getName() +
                     "', " + developer.getSalary() + ")";

@@ -19,30 +19,6 @@ class SkillsDAO {
     }
 
 
-    private Skills checkSkill(int id, String specialty, Statement statement)
-            throws SQLException, NullPointerException {
-        Skills chSkill = null;
-
-        if (id != 0) {
-            query = "SELECT * FROM skills WHERE id = " + id;
-            result = statement.executeQuery(query);
-            while (result.next())
-                chSkill = new Skills(result.getInt("id"),
-                        result.getString("specialty"));
-            return chSkill;
-        } else if (!specialty.equals("") ||
-                !Objects.equals(specialty, null)) {
-            query = "SELECT * FROM developers WHERE name = '" + specialty + "'";
-            result = statement.executeQuery(query);
-            while (result.next())
-                chSkill = new Skills(result.getInt("id"),
-                        result.getString("name"));
-            return chSkill;
-        }
-
-        return null;
-    }
-
     private void unsuccessUpOrDel(Connection connection, Statement statement)
             throws SQLException {
         Skills chSkill;
@@ -106,15 +82,19 @@ class SkillsDAO {
     void createSkill(Skills skill, Connection connection, Statement statement)
             throws SQLException, NullPointerException {
         String ID, specialty;
-        int id;
+        int id = 0;
 
         if (skill == null) {
 
-            System.out.print("Enter ID (optional, click enter for skip): ");
-            ID = reader.nextLine();
-            if (ID.equals(""))
-                ID = "0";
-            id = Integer.parseInt(ID);
+            do {
+                System.out.print("Enter ID (optional, click enter for skip): ");
+                ID = reader.nextLine();
+                if (ID.equals(""))
+                    ID = "0";
+                if (CommonMethods.isNumber(ID))
+                    id = Integer.parseInt(ID);
+                else System.out.println("You didn't write a number! Try again.");
+            } while (!CommonMethods.isNumber(ID));
 
             System.out.print("Enter the specialty: ");
             specialty = reader.nextLine();
@@ -149,10 +129,11 @@ class SkillsDAO {
                 System.out.println("Chosen ID is busied." +
                         " The new skill will have ID = " + id);
                 skill.setID(id);
-
-                query = "INSERT INTO skills VALUES (" + id + ", '" + skill.getSpecialty() + "')";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
             }
+
+            query = "INSERT INTO skills VALUES (" + id + ", '" + skill.getSpecialty() + "')";
+            System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
+
         } else {
             query = "INSERT INTO skills VALUES (NULL, '" + skill.getSpecialty() + "')";
             System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
@@ -162,10 +143,6 @@ class SkillsDAO {
         result = statement.executeQuery(query);
         while (result.next())
            this.skill = new Skills(result.getInt("id"), result.getString("specialty"));
-
-        addSkillLink(this.skill, "developers", connection, statement);
-
-        addSkillLink(this.skill, "projects", connection, statement);
 
         System.out.println("Would you like to add another skill? (Y/any key)");
         choice = reader.nextLine();

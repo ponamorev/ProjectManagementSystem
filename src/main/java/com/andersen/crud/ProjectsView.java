@@ -64,7 +64,7 @@ class ProjectsView {
             System.out.println("Enter one and more values or range of values.\n" +
                     "If you enter string or date value you will write this value " +
                     "in follow format: string_column = 'some_value'.\nFor example, " +
-                    "'column = value' or 'column1 = value1, column2 = value2' or " +
+                    "'column = value' or 'column1 = value1, column2 > value2' or " +
                     "'column BETWEEN min_value AND max_value'..");
             value = reader.nextLine();
             builder.append(value);

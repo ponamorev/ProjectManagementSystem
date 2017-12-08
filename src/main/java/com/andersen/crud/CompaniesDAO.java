@@ -19,38 +19,6 @@ class CompaniesDAO {
     }
 
 
-    private Companies checkCompany(int id, String name, String address, Statement statement)
-            throws SQLException, NullPointerException {
-        Companies comp = null;
-
-        if (id != 0) {
-            query = "SELECT * FROM companies WHERE id = " + id;
-            result = statement.executeQuery(query);
-            while (result.next())
-                comp = new Companies(result.getInt("id"),
-                        result.getString("name"), result.getString("address"));
-            return comp;
-        } else if (!name.equals("") ||
-                !Objects.equals(name, null)) {
-            query = "SELECT * FROM companies WHERE name = '" + name + "'";
-            result = statement.executeQuery(query);
-            while (result.next())
-                comp = new Companies(result.getInt("id"),
-                        result.getString("name"), result.getString("address"));
-            return comp;
-        } else if (!address.equals("") ||
-                !Objects.equals(address, null)) {
-            query = "SELECT * FROM companies WHERE address = '" + address + "' LIMIT 1";
-            result = statement.executeQuery(query);
-            while (result.next())
-                comp = new Companies(result.getInt("id"),
-                        result.getString("name"), result.getString("address"));
-            return comp;
-        }
-
-        return null;
-    }
-
     private void unsuccessUpOrDel(Connection connection, Statement statement)
             throws SQLException {
         Companies comp;
@@ -79,7 +47,7 @@ class CompaniesDAO {
                 tableObjectName = "project";
                 columns = new String[]{"id", "name", "description", "start", "deadline", "cost"};
                 break;
-            case "companies":
+            case "customers":
                 tableObjectName = "customer";
                 columns = new String[]{"id", "name"};
                 break;
@@ -110,10 +78,10 @@ class CompaniesDAO {
 
                 if (id != 0) {
                     if (table.equals("developers"))
-                        query = "INSERT INTO " + table + "_companies VALUES (" + choice +
+                        query = "INSERT INTO " + table + "_companies VALUES (" + id +
                                 ", " + company.getID() + ")";
                     else query = "INSERT INTO companies_" + table + " VALUES (" + company.getID() +
-                            ", " + choice + ")";
+                            ", " + id + ")";
                     System.out.println("Add " + statement.executeUpdate(query) + " row(-s) in the table..");
 
                     System.out.println("Would you like to add another " + tableObjectName + "? (Y/any key)");
@@ -131,14 +99,18 @@ class CompaniesDAO {
     void createCompany(Companies company, Connection connection, Statement statement)
             throws SQLException {
         String ID, name, address;
-        int id;
+        int id = 0;
         if (company == null) {
 
-            System.out.print("Enter ID (optional, click enter for skip): ");
-            ID = reader.nextLine();
-            if (ID.equals(""))
-                ID = "0";
-            id = Integer.parseInt(ID);
+            do {
+                System.out.print("Enter ID (optional, click enter for skip): ");
+                ID = reader.nextLine();
+                if (ID.equals(""))
+                    ID = "0";
+                if (CommonMethods.isNumber(ID))
+                    id = Integer.parseInt(ID);
+                else System.out.println("You didn't write a number! Try again.");
+            } while (!CommonMethods.isNumber(ID));
 
             System.out.print("Enter the name: ");
             name = reader.nextLine();
@@ -178,11 +150,12 @@ class CompaniesDAO {
                 System.out.println("This ID is busied." +
                         " The new company will have ID = " + id);
                 company.setID(id);
-
-                query = "INSERT INTO companies VALUES (" + id + ", '" + company.getName() +
-                        "', '" + company.getAddress() + "')";
-                System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
             }
+
+            query = "INSERT INTO companies VALUES (" + id + ", '" + company.getName() +
+                    "', '" + company.getAddress() + "')";
+            System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
+
         } else {
             query = "INSERT INTO companies VALUES (NULL, '" + company.getName() +
                     "', '" + company.getAddress() + "')";
@@ -237,8 +210,8 @@ class CompaniesDAO {
             System.out.println(statement.executeUpdate(query) + " row(-s) changed.\n");
 
         } else {
-            System.out.println("The developer wasn't found. Would you like " +
-                    "to add a new developer? (Y/any key)");
+            System.out.println("The company wasn't found. Would you like " +
+                    "to add a new company? (Y/any key)");
             choice = reader.nextLine();
             unsuccessUpOrDel(connection, statement);
         }

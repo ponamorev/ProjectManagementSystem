@@ -34,6 +34,7 @@ class CommonMethods {
 
         result.beforeFirst();
         for (int a = 0; a < 2; a++) {
+            result.beforeFirst();
             row = 0;
             while (result.next()) {
                 columns[row] = result.getString(1);
@@ -70,13 +71,12 @@ class CommonMethods {
     }
 
     static String checkDate(String date) throws NumberFormatException {
-        boolean flag = false, check = false, rightDay = false;
+        boolean flag = false, check, rightDay = false;
         int year, month, day;
 
         do {
             try {
-                while (!check)
-                    check = date.length() == 10 && isNumber(date.substring(0, 4)) &&
+                check = date.length() == 10 && isNumber(date.substring(0, 4)) &&
                             date.charAt(4) == '-' && isNumber(date.substring(5, 7)) &&
                             date.charAt(7) == '-' && isNumber(date.substring(8));
 
@@ -84,11 +84,11 @@ class CommonMethods {
                     year = Integer.parseInt(date.substring(0, 4));
                     month = Integer.parseInt(date.substring(5, 7));
                     day = Integer.parseInt(date.substring(8));
-                    rightDay = (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 ||
-                            month == 10 || month == 12) == (day >= 1 & day <= 31) ||
-                            ((year % 4 == 0) & (month == 2) == (day >= 1 & day <= 29)) ||
-                            ((year % 4 != 0) & (month == 2) == (day >= 1 & day <= 28)) ||
-                            (month == 4 || month == 6 || month == 9 || month == 11) == (day >= 1 & day <= 30);
+                    rightDay = ((month == 1 || month == 3 || month == 5 || month == 7 || month == 8 ||
+                            month == 10 || month == 12) & (day >= 1 & day <= 31)) ||
+                            ((year % 4 == 0) & (month == 2) & (day >= 1 & day <= 29)) ||
+                            ((year % 4 != 0) & (month == 2) & (day >= 1 & day <= 28)) ||
+                            ((month == 4 || month == 6 || month == 9 || month == 11) & (day >= 1 & day <= 30));
                 }
 
                 check = rightDay;
@@ -112,7 +112,7 @@ class CommonMethods {
     static void checkQueryAndOut(String testQuery, String[] columns, Connection connection)
             throws SQLException {
         ResultSet result;
-        String fieldName[], fieldResult[][], addString;
+        String fieldResult[][], addString;
 
         if (!Objects.equals(testQuery, "")) {
             int count, max_lenght[], row;
@@ -120,15 +120,13 @@ class CommonMethods {
             //
             // Search number of the columns in the table
             //
-            fieldName = new String[columns.length];
             max_lenght = new int[columns.length];
 
             //
             // Record of the name of the columns from the table
             //
             for (int i = 0; i < columns.length; i++) {
-                fieldName[i] = columns[i];
-                max_lenght[i] = fieldName[i].length() + 1;
+                max_lenght[i] = columns[i].length() + 1;
             }
             System.out.println();
 
@@ -177,11 +175,11 @@ class CommonMethods {
 
             count = 0;
             while (count < columns.length)
-                if (fieldName[count].length() < max_lenght[count]) {
+                if (columns[count].length() < max_lenght[count]) {
                     addString = "";
-                    for (int i = 0; i < (max_lenght[count] - fieldName[count].length()); i++)
+                    for (int i = 0; i < (max_lenght[count] - columns[count].length()); i++)
                         addString += " ";
-                    fieldName[count] = fieldName[count++].concat(addString);
+                    columns[count] = columns[count++].concat(addString);
                 }
 
             //
@@ -190,7 +188,7 @@ class CommonMethods {
             count = 0;
             System.out.print("| ");
             while (count < columns.length) {
-                System.out.print(fieldName[count]);
+                System.out.print(columns[count]);
                 if (count + 1 <= columns.length)
                     System.out.print(" | ");
                 count++;
